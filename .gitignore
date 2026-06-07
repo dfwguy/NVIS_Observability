@@ -38,6 +38,8 @@ __pycache__/
 .AppleDouble
 .LSOverride
 
+# Claude Code
+.claude/
 
 # Node exporter / Go binaries
 node_exporter

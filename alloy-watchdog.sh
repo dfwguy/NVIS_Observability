@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ============================================================================
-# alloy-watchdog.sh  — self-healing Grafana Alloy for the Beacon DGX nodes
+# alloy-watchdog.sh  — self-healing Grafana Alloy for GPU cluster nodes
 # ============================================================================
-# WHY: the DGX B300 nodes run Alloy off ephemeral root; every reboot WIPES the
+# WHY: GPU nodes run Alloy off ephemeral root; every reboot WIPES the
 # binary + /etc/alloy config + the systemd unit, so log shipping (syslog,
 # kernel/Xid, nv-hostengine/DCGM, slurmd, fabricmanager) silently stops on the
 # rebooted node and we go blind there. (The head node is NOT wiped, so it keeps
 # Alloy.) This watchdog re-installs Alloy on any DGX that is missing it.
 #
-# WHERE IT RUNS: as root on beacon-head-01. The head is the cluster pivot and
-# has BCM root trust to every DGX (`ssh root@dgx-b300-0N`), including 03/04 that
-# reject the hlakshminara key. No passwords are stored — it reuses the existing
+# WHERE IT RUNS: as root on the cluster head node. The head is the cluster pivot and
+# has root trust to every compute node via existing head-root key.
+# No passwords are stored — it reuses the existing
 # head-root -> node-root key trust. Install via bootstrap-alloy-watchdog.sh.
 #
 # WHAT "missing" MEANS: `systemctl is-active alloy` != active OR the alloy binary
@@ -26,9 +26,9 @@
 set -uo pipefail
 
 STAGE="${ALLOY_STAGE:-/cm/shared/apps/nvis/alloy}"
-CLUSTER="${CLUSTER_NAME:-Beacon}"
-LOKI="${LOKI_URL:-http://10.184.70.241:3100/loki/api/v1/push}"   # ObsVM externalIP:3100
-DGX_NODES="${DGX_NODES:-dgx-b300-01 dgx-b300-02 dgx-b300-03 dgx-b300-04}"
+CLUSTER="${CLUSTER_NAME:-my-cluster}"
+LOKI="${LOKI_URL:-http://obsvm:3100/loki/api/v1/push}"   # ObsVM URL
+DGX_NODES="${DGX_NODES:-compute-01 compute-02}"
 SSH="ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o ConnectTimeout=8"
 LOG="$STAGE/watchdog.log"
 ts(){ date '+%Y-%m-%dT%H:%M:%S%z'; }

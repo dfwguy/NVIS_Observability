@@ -1,0 +1,96 @@
+{{- if .Values.nodeExporter.enabled }}
+---
+# node_exporter DaemonSet
+# Runs on EVERY node (CPU, memory, disk, network, filesystem metrics).
+# Uses hostNetwork + hostPID to see the real host — not the container.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvis-node-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-node-exporter
+    {{- include "nvis-gpu-agents.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: nvis-node-exporter
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvis-node-exporter
+        {{- include "nvis-gpu-agents.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: nvis-gpu-agents
+      hostNetwork: true   # bind to host :9100, not pod IP
+      hostPID: true       # see host processes (needed for process metrics)
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        {{- toYaml .Values.nodeExporter.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.nodeExporter.tolerations | nindent 8 }}
+      containers:
+        - name: node-exporter
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.nodeExporter.image.repository "tag" .Values.nodeExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            - --web.listen-address=:{{ .Values.nodeExporter.port }}
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($$|/)
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.nodeExporter.port }}
+              hostPort: {{ .Values.nodeExporter.port }}
+              protocol: TCP
+          securityContext:
+            privileged: true
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+              mountPropagation: HostToContainer
+          resources:
+            {{- toYaml .Values.nodeExporter.resources | nindent 12 }}
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-node-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-node-exporter
+    {{- include "nvis-gpu-agents.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "{{ .Values.nodeExporter.port }}"
+spec:
+  clusterIP: None
+  selector:
+    app: nvis-node-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.nodeExporter.port }}
+      targetPort: {{ .Values.nodeExporter.port }}
+      protocol: TCP
+{{- end }}

@@ -1,0 +1,10 @@
+{{- /*
+=============================================================================
+DEPRECATED — replaced by templates/victoriametrics/ subdirectory.
+This file is kept as a placeholder to avoid git conflicts.
+All resources are now defined in:
+  templates/victoriametrics/deployment.yaml
+  templates/victoriametrics/service.yaml
+  templates/victoriametrics/pvc.yaml
+=============================================================================
+*/ -}}

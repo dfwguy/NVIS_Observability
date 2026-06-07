@@ -1,0 +1,38 @@
+# =============================================================================
+# devices.yaml.example — LLDPq switch inventory
+# Copy to devices.yaml and fill in your switch management IPs and hostnames.
+# =============================================================================
+#
+# FORMAT:
+#   <mgmt-ip>: <hostname> @<role>
+#
+# ROLES: spine | leaf | border | oob
+#
+# USERNAME NOTE:
+#   defaults.username is set to 'cumulus' for Cumulus Linux switches.
+#   For NVIDIA NVOS (SPX), use 'admin'. Override per-device if mixed.
+# =============================================================================
+
+defaults:
+  username: cumulus          # change to 'admin' for NVOS/SPX switches
+
+devices:
+
+  # --- Spine switches ---
+  10.0.0.10: SPINE-01 @spine
+  10.0.0.11: SPINE-02 @spine
+
+  # --- Leaf switches ---
+  10.0.0.20: LEAF-01 @leaf
+  10.0.0.21: LEAF-02 @leaf
+  10.0.0.22: LEAF-03 @leaf
+  10.0.0.23: LEAF-04 @leaf
+
+# =============================================================================
+# ENDPOINT HOSTS — compute nodes (discovered via LLDP, not polled directly)
+# Wildcards are matched against LLDP-advertised hostnames.
+# =============================================================================
+
+endpoint_hosts:
+  - "*dgx*"        # DGX compute nodes
+  - "*compute*"    # generic compute pattern

@@ -1,0 +1,148 @@
+{{- if .Values.prometheus.enabled }}
+---
+# =============================================================================
+# Prometheus StatefulSet
+# =============================================================================
+# StatefulSet (not Deployment) because Prometheus TSDB requires a stable
+# identity and persistent volume. Scaling to >1 replica creates independent
+# shards — use Thanos Receive or VM cluster for true HA.
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nvis-prometheus
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-prometheus
+  serviceName: nvis-prometheus-headless
+  # Pod management: Parallel allows faster upgrades; OrderedReady is safer
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvis-prometheus
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+      annotations:
+        # Force pod restart when ConfigMap changes (checksum-based)
+        checksum/config: {{ include (print $.Template.BasePath "/prometheus/configmap.yaml") . | sha256sum }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # -----------------------------------------------------------------------
+      # Security — run as nobody (65534), no privilege escalation
+      # -----------------------------------------------------------------------
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534    # nobody
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-prometheus
+      # -----------------------------------------------------------------------
+      # Init: ensure data dir has correct ownership after PVC mount
+      # -----------------------------------------------------------------------
+      initContainers:
+        - name: fix-permissions
+          image: {{ include "nvis.image" (dict "root" . "repo" "busybox" "tag" "1.36") }}
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          securityContext:
+            runAsUser: 0          # root only for this init step
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
+      # -----------------------------------------------------------------------
+      # Main container
+      # -----------------------------------------------------------------------
+      containers:
+        - name: prometheus
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.prometheus.image.repository "tag" .Values.prometheus.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.prometheus.retention }}
+            - --web.listen-address=:{{ .Values.prometheus.port }}
+            - --web.enable-lifecycle
+            - --web.enable-remote-write-receiver
+            - --web.enable-admin-api
+          ports:
+            - name: http
+              containerPort: {{ .Values.prometheus.port }}
+              hostPort: {{ .Values.prometheus.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+          resources:
+            {{- toYaml .Values.prometheus.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # Prometheus writes WAL to /prometheus
+            capabilities:
+              drop:
+                - ALL
+          # -----------------------------------------------------------------
+          # Probes
+          # initialDelaySeconds: generous — TSDB recovery can take 20-30s
+          # -----------------------------------------------------------------
+          startupProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.prometheus.port }}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: nvis-prometheus-config
+  # -------------------------------------------------------------------------
+  # PVC Template — created automatically per replica (data-nvis-prometheus-0)
+  # -------------------------------------------------------------------------
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: nvis-prometheus
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.prometheus.persistence.storageClass }}
+        storageClassName: {{ .Values.prometheus.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.prometheus.persistence.size }}
+{{- end }}

@@ -1,0 +1,156 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Live BMC health grid for DGX cluster - one colored square per BMC (green=up, red=down). Click a square for status, GPU/CPU temps, fan RPM. Scales 4 -> 127+ nodes.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "datasource": {
+        "type": "datasource",
+        "uid": "grafana"
+      },
+      "gridPos": {
+        "h": 24,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "html",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div id=\"ch\" style=\"width:100%;height:100%;background:#07071a;color:#e0e0e0;font-family:'Roboto Mono',monospace;overflow:auto;\">\n<style>\n#ch *{box-sizing:border-box}\n@keyframes pulse{0%,100%{box-shadow:0 0 6px currentColor}50%{box-shadow:0 0 22px currentColor}}\n#ch-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(90deg,#0a0a22,#12123a);border-bottom:2px solid;border-image:repeating-linear-gradient(90deg,#00ff88 0,#00ff88 12px,transparent 12px,transparent 22px,#7b2fff 22px,#7b2fff 34px,transparent 34px,transparent 44px) 1;flex-wrap:wrap}\n#ch-hdr .logo{font-size:.82em;font-weight:800;background:linear-gradient(135deg,#00ff88,#7b2fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:78px;line-height:1.3}\n#ch-hdr .kpi{background:linear-gradient(135deg,#10103a,#1a1a4a);border:1px solid #2a2a6a;border-radius:7px;padding:5px 13px;text-align:center;min-width:62px}\n.kv{font-size:1.5em;font-weight:800;line-height:1.1}\n.kl{font-size:.58em;color:#7777bb;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}\n.kn{font-size:.95em;color:#ffeeaa;text-transform:none;letter-spacing:0;margin-left:4px;font-weight:700}\n#ch-ts{margin-left:auto;font-size:.6em;color:#44448a;background:#0a0a1e;border:1px solid #1a1a3a;border-radius:4px;padding:3px 8px}\n#ch-body{padding:10px 14px}\n.sec-sep{height:1px;margin:12px 0 8px;background:linear-gradient(90deg,transparent,#1a1a44 20%,#1a1a44 80%,transparent);}\n.sec-lbl{font-size:.67em;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:4px;display:block;margin-bottom:7px}\n#bmc-grid{display:flex;flex-wrap:wrap;gap:8px}\n.bnc{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;border-radius:8px;width:88px;height:88px;cursor:pointer;transition:all .15s;border:1px solid transparent;position:relative;text-align:center}\n.bnc:hover{transform:translateY(-2px) scale(1.04);filter:brightness(1.25);z-index:5}\n.bnc.crit{animation:pulse 1.2s ease-in-out infinite}\n.bnc .bn{font-size:.78em;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);padding:0 4px;word-break:break-all}\n.bnc .bs{font-size:.6em;font-weight:700;color:rgba(255,255,255,.92);margin-top:3px;letter-spacing:.06em;text-transform:uppercase}\n.bnc .bt{font-size:.55em;color:rgba(255,255,255,.78);margin-top:2px}\n#ch-tip{display:none;position:fixed;top:64px;right:18px;width:300px;background:linear-gradient(160deg,#0d0d28,#13132e);border:1px solid #00ff88;border-radius:10px;padding:14px;z-index:200;max-height:78vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.7)}\n#ch-tip h3{font-size:.85em;margin:0 0 10px;color:#aaffcc;border-bottom:1px solid #003322;padding-bottom:6px}\n.tr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a1a33;font-size:.66em}\n.tr:last-child{border-bottom:none}\n.tk{color:#7777aa}.tv{color:#ddeeff;text-align:right}\n.lg{display:flex;gap:14px;align-items:center;margin-top:6px;font-size:.62em;color:#9999cc}\n.lg .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:middle}\n</style>\n\n<div id=\"ch-hdr\">\n  <div class=\"logo\">CLUSTER<br><span style=\"-webkit-text-fill-color:#5555aa;font-size:.8em\">HEALTH DGX</span></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-total\" style=\"color:#00d4ff\">-</div><div class=\"kl\">Total</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-up\" style=\"color:#44ff88\">-</div><div class=\"kl\">Up</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-down\" style=\"color:#ff4466\">-</div><div class=\"kl\">Down</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-maxgpu\" style=\"color:#ffcc44\">-</div><div class=\"kl\">Max GPU°C <span id=\"k-maxgpu-sub\" class=\"kn\"></span></div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-maxcpu\" style=\"color:#ff8844\">-</div><div class=\"kl\">Max CPU°C <span id=\"k-maxcpu-sub\" class=\"kn\"></span></div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-maxfan\" style=\"color:#aa88ff\">-</div><div class=\"kl\">Max Fan RPM <span id=\"k-maxfan-sub\" class=\"kn\"></span></div></div>\n  <div id=\"ch-ts\">-</div>\n</div>\n\n<div id=\"ch-body\">\n  <div class=\"sec-sep\"></div>\n  <div class=\"sec-lbl\" id=\"bmc-lbl\" style=\"color:#44ff88;background:rgba(68,255,136,.08);border-left:3px solid #44ff88\">BMCs</div>\n  <div id=\"bmc-grid\"></div>\n  <div class=\"lg\">\n    <span><span class=\"sw\" style=\"background:#1ec96a;border:1px solid #44ff88\"></span>Healthy (redfish_fast_up = 1)</span>\n    <span><span class=\"sw\" style=\"background:#c92338;border:1px solid #ff4466\"></span>Down (redfish_fast_up = 0)</span>\n    <span><span class=\"sw\" style=\"background:#666;border:1px solid #888\"></span>No data</span>\n    <span style=\"color:#666\">|</span>\n    <span style=\"color:#7777aa\">click a square for details</span>\n  </div>\n</div>\n\n<div id=\"ch-tip\">\n  <h3 id=\"ch-tip-title\">BMC <span onclick=\"document.getElementById('ch-tip').style.display='none'\" style=\"cursor:pointer;color:#555;float:right;font-weight:400\">x</span></h3>\n  <div id=\"ch-tip-body\"></div>\n</div>\n\n<script>\n(function(){\n  var CLUSTER = '$cluster';\n  var DS_UID  = '${datasource}';\n  var PROM    = '/api/datasources/proxy/uid/' + DS_UID + '/api/v1/query';\n  var detail = {};\n\n  function esc(s){return String(s==null?'':s).replace(/[<>&\"]/g,function(c){var m={'<':'&lt;','>':'&gt;','&':'&amp;','\"':'&quot;'};return m[c];});}\n  function fmtT(v){v=parseFloat(v);return isNaN(v)?'-':v.toFixed(1)+'\\u00b0C';}\n  function fmtR(v){v=parseFloat(v);return isNaN(v)?'-':Math.round(v).toLocaleString()+' RPM';}\n  function gpuColor(t){t=parseFloat(t);if(isNaN(t))return '#888';if(t>=90)return '#ff2244';if(t>=80)return '#ff7700';if(t>=70)return '#ffcc44';return '#44ff88';}\n  function pq(q){return fetch(PROM+'?query='+encodeURIComponent(q),{headers:{Accept:'application/json'}}).then(function(r){return r.json();}).then(function(d){return (d.data||{}).result||[];}).catch(function(){return [];});}\n  function row(k,v,col){return '<div class=\"tr\"><span class=\"tk\">'+k+'</span><span class=\"tv\" style=\"'+(col?'color:'+col:'')+'\">'+esc(v==null||v===''?'-':v)+'</span></div>';}\n\n  function showTip(node){\n    var d = detail[node]; if(!d) return;\n    var statusCol = d.up===1?'#44ff88':(d.up===0?'#ff4466':'#888');\n    var h = '';\n    h += row('Node', node);\n    h += row('BMC IP', d.bmc);\n    h += row('Serial', d.serial);\n    h += row('Cluster', d.cluster);\n    h += row('Status', d.up===1?'UP':(d.up===0?'DOWN':'N/A'), statusCol);\n    h += row('Max GPU Temp', fmtT(d.gpuT), gpuColor(d.gpuT));\n    h += row('Max CPU Temp', fmtT(d.cpuT), gpuColor(d.cpuT));\n    h += row('Max Fan RPM',  fmtR(d.fan));\n    document.getElementById('ch-tip-title').childNodes[0].textContent = node + ' ';\n    document.getElementById('ch-tip-body').innerHTML = h;\n    document.getElementById('ch-tip').style.display = 'block';\n  }\n\n  document.getElementById('ch-body').addEventListener('click', function(e){\n    var c = e.target.closest('[data-node]');\n    if(c) showTip(c.getAttribute('data-node'));\n  });\n\n  async function refresh(){\n    document.getElementById('ch-ts').textContent = 'Refreshing\\u2026';\n    try{\n      var clusterMatcher = CLUSTER && CLUSTER.indexOf('All')<0 ? ',cluster=~\"'+CLUSTER+'\"' : '';\n      var R = await Promise.all([\n        pq('max by(node,bmc,serial,cluster)(redfish_fast_up{job=\"redfish-fast\"'+clusterMatcher+'})'),\n        pq('max by(node,bmc)(redfish_temperature_celsius{sensor=~\"HGX_GPU_[0-7]_TEMP_[01]\"'+clusterMatcher+'})'),\n        pq('max by(node,bmc)(redfish_temperature_celsius{sensor=~\"TEMP_CPU[01]\"'+clusterMatcher+'})'),\n        pq('max by(node,bmc)(redfish_fan_rpm{'+(clusterMatcher.replace(/^,/,''))+'})')\n      ]);\n      var upR=R[0], gpuR=R[1], cpuR=R[2], fanR=R[3];\n\n      detail = {};\n      upR.forEach(function(r){\n        var n = r.metric.node || r.metric.bmc;\n        detail[n] = {\n          bmc: r.metric.bmc || '-',\n          serial: r.metric.serial || '-',\n          cluster: r.metric.cluster || '-',\n          up: parseInt(r.value[1], 10),\n          gpuT: NaN, cpuT: NaN, fan: NaN\n        };\n      });\n      gpuR.forEach(function(r){ var n=r.metric.node; if(detail[n]) detail[n].gpuT = parseFloat(r.value[1]); });\n      cpuR.forEach(function(r){ var n=r.metric.node; if(detail[n]) detail[n].cpuT = parseFloat(r.value[1]); });\n      fanR.forEach(function(r){ var n=r.metric.node; if(detail[n]) detail[n].fan  = parseFloat(r.value[1]); });\n\n      var nodes = Object.keys(detail).sort(function(a,b){\n        var na=(a.match(/(\\d+)$/)||[0,0])[1], nb=(b.match(/(\\d+)$/)||[0,0])[1];\n        return parseInt(na,10) - parseInt(nb,10) || a.localeCompare(b);\n      });\n\n      var total = nodes.length;\n      var ups = nodes.filter(function(n){return detail[n].up===1;}).length;\n      var downs = nodes.filter(function(n){return detail[n].up===0;}).length;\n      function maxBy(pick){return nodes.reduce(function(a,n){var v=pick(detail[n]);return (\\!isNaN(v)&&v>a.v)?{v:v,n:n}:a;},{v:-Infinity,n:null});}\n      var maxGpu = maxBy(function(d){return d.gpuT;});\n      var maxCpu = maxBy(function(d){return d.cpuT;});\n      var maxFan = maxBy(function(d){return d.fan;});\n\n      document.getElementById('k-total').textContent = total;\n      document.getElementById('k-up').textContent = ups;\n      document.getElementById('k-down').textContent = downs;\n      var de = document.getElementById('k-down'); de.style.color = downs>0?'#ff2244':'#44ff88';\n      document.getElementById('k-maxgpu').textContent = isFinite(maxGpu.v)?maxGpu.v.toFixed(1)+'°':'-';\n      document.getElementById('k-maxgpu-sub').textContent = maxGpu.n?'← '+maxGpu.n:'';\n      document.getElementById('k-maxcpu').textContent = isFinite(maxCpu.v)?maxCpu.v.toFixed(1)+'°':'-';\n      document.getElementById('k-maxcpu-sub').textContent = maxCpu.n?'← '+maxCpu.n:'';\n      document.getElementById('k-maxfan').textContent = isFinite(maxFan.v)?Math.round(maxFan.v).toLocaleString():'-';\n      document.getElementById('k-maxfan-sub').textContent = maxFan.n?'← '+maxFan.n:'';\n      document.getElementById('bmc-lbl').textContent = 'BMCs (' + total + ')';\n\n      var grid = document.getElementById('bmc-grid');\n      grid.innerHTML = '';\n      nodes.forEach(function(n){\n        var d = detail[n];\n        var up = d.up;\n        var bg = up===1 ? 'linear-gradient(135deg,#0c5a30,#1ec96a)'\n               : up===0 ? 'linear-gradient(135deg,#5a0c1a,#c92338)'\n               : 'linear-gradient(135deg,#333,#666)';\n        var bd = up===1 ? '#44ff88' : (up===0 ? '#ff4466' : '#888');\n        var cls = up===0 ? 'bnc crit' : 'bnc';\n        var sub = up===1 ? fmtT(d.gpuT).replace('\\u00b0C','\\u00b0') : (up===0 ? 'OFFLINE' : 'N/A');\n        var card = document.createElement('div');\n        card.className = cls;\n        card.setAttribute('data-node', n);\n        card.setAttribute('title', n + ' \\u2022 ' + (d.bmc||'-') + ' \\u2022 ' + (up===1?'UP':(up===0?'DOWN':'N/A')));\n        card.style.cssText = 'background:'+bg+';border-color:'+bd+';box-shadow:0 0 6px rgba(0,0,0,.4);';\n        card.innerHTML = '<div class=\"bn\">'+esc(n)+'</div>'+\n                         '<div class=\"bs\">'+(up===1?'UP':(up===0?'DOWN':'N/A'))+'</div>'+\n                         '<div class=\"bt\">'+esc(sub)+'</div>';\n        grid.appendChild(card);\n      });\n\n      if (total === 0) {\n        grid.innerHTML = '<span style=\"color:#666;font-size:.7em\">No BMCs found for cluster \\u201c'+esc(CLUSTER)+'\\u201d</span>';\n      }\n\n      document.getElementById('ch-ts').textContent = 'Updated ' + new Date().toLocaleTimeString();\n    } catch(e) {\n      document.getElementById('ch-ts').textContent = 'Error: ' + e.message;\n    }\n    setTimeout(refresh, 15000);\n  }\n\n  refresh();\n})();\n</script>\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "10.4.0",
+      "title": "Cluster Health",
+      "type": "text"
+    }
+  ],
+  "refresh": "15s",
+  "schemaVersion": 39,
+  "tags": [
+    "nvis",
+    "cluster-health",
+    "hwval"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "nvis-prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(up, cluster)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Cluster",
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(up, cluster)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "allValue": ".*"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(redfish_fast_up, dgx_flavor)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "DGX Flavor",
+        "multi": false,
+        "name": "dgx_flavor",
+        "options": [],
+        "query": {
+          "query": "label_values(redfish_fast_up, dgx_flavor)",
+          "refId": "DgxFlavorQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "allValue": ".*"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "15s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "${dgx_flavor} Cluster Health",
+  "uid": "nvis-hwval-cluster-health",
+  "version": 1,
+  "weekStart": ""
+}

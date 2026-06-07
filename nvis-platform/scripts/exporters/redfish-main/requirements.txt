@@ -1,0 +1,3 @@
+# redfish-main exporter uses only the Python standard library
+# (urllib, ssl, base64, json, ipaddress, threading, http.server).
+# No third-party dependencies. File kept for build consistency.

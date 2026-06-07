@@ -1,0 +1,292 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana admin password Secret
+# =============================================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nvis-grafana-secret
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+type: Opaque
+stringData:
+  admin-password: {{ .Values.grafana.adminPassword | default "changeme" | quote }}
+---
+# =============================================================================
+# Grafana datasources ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-datasources
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        uid: nvis-prometheus
+        url: http://nvis-prometheus.{{ .Release.Namespace }}.svc:{{ .Values.prometheus.port }}
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: "15s"
+          httpMethod: POST
+      {{- if .Values.loki.enabled }}
+      - name: Loki
+        type: loki
+        uid: nvis-loki
+        url: http://nvis-loki.{{ .Release.Namespace }}.svc:{{ .Values.loki.port }}
+        access: proxy
+        jsonData:
+          maxLines: 5000
+      {{- end }}
+---
+# =============================================================================
+# Grafana ini ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-ini
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  grafana.ini: |
+    [server]
+    {{- if .Values.grafana.rootUrl }}
+    root_url = {{ .Values.grafana.rootUrl }}
+    {{- end }}
+
+    [users]
+    allow_sign_up = false
+
+    [auth.anonymous]
+    enabled = false
+
+    [panels]
+    disable_sanitize_html = true
+
+    [security]
+    allow_embedding = false
+
+    {{- if and .Values.alerts.email.enabled .Values.grafana.smtp.enabled }}
+    [smtp]
+    enabled = true
+    host = {{ .Values.grafana.smtp.host }}:{{ .Values.grafana.smtp.port }}
+    {{- if .Values.grafana.smtp.user }}
+    user = {{ .Values.grafana.smtp.user }}
+    password = {{ .Values.grafana.smtp.password }}
+    {{- end }}
+    from_address = {{ .Values.grafana.smtp.fromAddress }}
+    from_name = {{ .Values.grafana.smtp.fromName }}
+    startTLS_policy = {{ if .Values.grafana.smtp.startTls }}OpportunisticStartTLS{{ else }}NoStartTLS{{ end }}
+    skip_verify = true
+    {{- end }}
+---
+# =============================================================================
+# Grafana PVC
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvis-grafana-data
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+---
+# =============================================================================
+# Grafana Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-grafana
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nvis-grafana
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-grafana
+      annotations:
+        checksum/datasources: {{ printf "%s|%s" .Values.cluster.name .Values.grafana.rootUrl | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: grafana
+          image: {{ include "nvis-platform.image" (dict "root" . "repo" .Values.grafana.image.repository "tag" .Values.grafana.image.tag) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-grafana-secret
+                  key: admin-password
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+            {{- if and .Values.alerts.teams.enabled .Values.alerts.enabled }}
+            - name: TEAMS_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.alerts.teams.webhookSecret }}
+                  key: url
+            {{- end }}
+            {{- if and .Values.alerts.slack.enabled .Values.alerts.enabled }}
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.alerts.slack.webhookSecret }}
+                  key: url
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: ini
+              mountPath: /etc/grafana/grafana.ini
+              subPath: grafana.ini
+              readOnly: true
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            {{- if .Values.dashboards.hwValidation.enabled }}
+            - name: dashboards-hw
+              mountPath: /var/lib/grafana/dashboards/hw
+              readOnly: true
+            {{- end }}
+            {{- if .Values.dashboards.observability.enabled }}
+            - name: dashboards-obs
+              mountPath: /var/lib/grafana/dashboards/obs
+              readOnly: true
+            {{- end }}
+            {{- if .Values.alerts.enabled }}
+            - name: alerting
+              mountPath: /etc/grafana/provisioning/alerting
+              readOnly: true
+            {{- end }}
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 472
+            runAsGroup: 472
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: nvis-grafana-data
+        - name: ini
+          configMap:
+            name: nvis-grafana-ini
+        - name: datasources
+          configMap:
+            name: nvis-grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: nvis-grafana-dashboard-provider
+        {{- if .Values.dashboards.hwValidation.enabled }}
+        - name: dashboards-hw
+          projected:
+            sources:
+              {{- range $path, $_ := .Files.Glob "dashboards/hw/*.json" }}
+              - configMap:
+                  name: nvis-dash-hw-{{ base $path | trimSuffix ".json" }}
+              {{- end }}
+        {{- end }}
+        {{- if .Values.dashboards.observability.enabled }}
+        - name: dashboards-obs
+          projected:
+            sources:
+              {{- range $path, $_ := .Files.Glob "dashboards/obs/*.json" }}
+              - configMap:
+                  name: nvis-dash-obs-{{ base $path | trimSuffix ".json" }}
+              {{- end }}
+        {{- end }}
+        {{- if .Values.alerts.enabled }}
+        - name: alerting
+          projected:
+            sources:
+              - configMap:
+                  name: nvis-grafana-contact-points
+              - configMap:
+                  name: nvis-grafana-notification-policies
+              - configMap:
+                  name: nvis-grafana-alert-rules
+        {{- end }}
+---
+# =============================================================================
+# Grafana Service (NodePort)
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-grafana
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+spec:
+  type: NodePort
+  selector:
+    app: nvis-grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: {{ .Values.grafana.nodePort }}
+      protocol: TCP
+{{- end }}

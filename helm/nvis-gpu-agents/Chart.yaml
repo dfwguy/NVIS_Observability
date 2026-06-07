@@ -1,0 +1,17 @@
+apiVersion: v2
+name: nvis-gpu-agents
+description: >
+  NVIS GPU node monitoring agents — DCGM Exporter, node_exporter, and Grafana Alloy.
+  Runs as DaemonSets on GPU nodes; pushes metrics/logs to nvis-obsvm (or any
+  Prometheus remote_write / Loki endpoint).
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - gpu
+  - nvidia
+  - dcgm
+  - observability
+  - monitoring
+maintainers:
+  - name: NVIS CBU

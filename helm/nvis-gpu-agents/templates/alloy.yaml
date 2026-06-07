@@ -1,0 +1,244 @@
+{{- if .Values.alloy.enabled }}
+---
+# Alloy ConfigMap — the River config that scrapes DCGM + node_exporter
+# and pushes to Prometheus + Loki
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-alloy-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-alloy
+    {{- include "nvis-gpu-agents.labels" . | nindent 4 }}
+data:
+  config.alloy: |
+    // =========================================================================
+    // NVIS GPU Node Alloy Config — K8s DaemonSet edition
+    // Each Alloy pod scrapes its own node's exporters (via hostNetwork localhost)
+    // and pushes to the central Prometheus + Loki.
+    // NODE_NAME and CLUSTER_NAME are injected as env vars from K8s Downward API.
+    // =========================================================================
+
+    // -------------------------------------------------------------------------
+    // Scrape DCGM Exporter — GPU metrics
+    // Two modes:
+    //   dcgmPodSelector set   → K8s pod discovery (pre-existing DCGM, no hostPort)
+    //   dcgmPodSelector empty → localhost scrape (our own DCGM with hostNetwork+hostPort)
+    // -------------------------------------------------------------------------
+    {{- if .Values.alloy.dcgmPodSelector }}
+    // Pre-existing DCGM (e.g. Run.ai gpu-operator): no hostPort — must use pod IP.
+    // Filter by node name so each Alloy pod only scrapes its co-located DCGM pod.
+    discovery.kubernetes "dcgm_pods" {
+      role = "pod"
+      selectors {
+        role  = "pod"
+        label = "{{ .Values.alloy.dcgmPodSelector }}"
+        field = "spec.nodeName=" + env("NODE_NAME")
+      }
+    }
+
+    discovery.relabel "dcgm_target" {
+      targets = discovery.kubernetes.dcgm_pods.targets
+
+      rule {
+        source_labels = ["__meta_kubernetes_pod_ip"]
+        target_label  = "__address__"
+        replacement   = "$1:{{ if .Values.alloy.dcgmScrapePort }}{{ .Values.alloy.dcgmScrapePort }}{{ else }}{{ .Values.dcgmExporter.port }}{{ end }}"
+      }
+
+      // Drop K8s metadata labels — keep metrics clean
+      rule {
+        regex  = "__meta_kubernetes_.*"
+        action = "labeldrop"
+      }
+    }
+
+    prometheus.scrape "dcgm" {
+      targets         = discovery.relabel.dcgm_target.output
+      forward_to      = [prometheus.relabel.add_node_labels.receiver]
+      scrape_interval = "{{ .Values.alloy.scrapeInterval }}"
+      job_name        = "dcgm-exporter"
+    }
+    {{- else }}
+    // Our own DCGM (hostNetwork + hostPort): scrape localhost directly.
+    prometheus.scrape "dcgm" {
+      targets         = [{"__address__" = "localhost:{{ if .Values.alloy.dcgmScrapePort }}{{ .Values.alloy.dcgmScrapePort }}{{ else }}{{ .Values.dcgmExporter.port }}{{ end }}"}]
+      forward_to      = [prometheus.relabel.add_node_labels.receiver]
+      scrape_interval = "{{ .Values.alloy.scrapeInterval }}"
+      job_name        = "dcgm-exporter"
+    }
+    {{- end }}
+
+    // -------------------------------------------------------------------------
+    // Scrape node_exporter — host metrics (port 9100)
+    // -------------------------------------------------------------------------
+    prometheus.scrape "node_exporter" {
+      targets = [{"__address__" = "localhost:{{ if .Values.alloy.nodeExporterScrapePort }}{{ .Values.alloy.nodeExporterScrapePort }}{{ else }}{{ .Values.nodeExporter.port }}{{ end }}"}]
+      forward_to = [prometheus.relabel.add_node_labels.receiver]
+      scrape_interval = "{{ .Values.alloy.scrapeInterval }}"
+      job_name = "node-exporter"
+    }
+
+    // -------------------------------------------------------------------------
+    // Add cluster + node labels to every metric, and fix the instance label.
+    // NODE_NAME comes from K8s Downward API (spec.nodeName).
+    //
+    // WHY instance override:
+    //   Alloy scrapes from localhost:9100 / localhost:9400 on every node.
+    //   Without this rule, all nodes emit instance="localhost:9100" and
+    //   Prometheus sees only 1 unique node — breaking per-node dashboard panels.
+    //   Setting instance=NODE_NAME gives each node a unique, meaningful label.
+    // -------------------------------------------------------------------------
+    prometheus.relabel "add_node_labels" {
+      forward_to = [prometheus.remote_write.obsvm.receiver]
+
+      rule {
+        target_label = "cluster"
+        replacement  = env("CLUSTER_NAME")
+      }
+
+      rule {
+        target_label = "node"
+        replacement  = env("NODE_NAME")
+      }
+
+      // Override instance so each node is distinct in Prometheus/Grafana
+      rule {
+        target_label = "instance"
+        replacement  = env("NODE_NAME")
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Push metrics to Prometheus (remote_write receiver)
+    // -------------------------------------------------------------------------
+    prometheus.remote_write "obsvm" {
+      endpoint {
+        url = env("PROMETHEUS_URL")
+
+        queue_config {
+          max_samples_per_send = 2000
+          batch_send_deadline  = "5s"
+        }
+      }
+    }
+
+    {{- if .Values.alloy.collectJournalLogs }}
+    // -------------------------------------------------------------------------
+    // Collect systemd journal logs and push to Loki
+    // -------------------------------------------------------------------------
+    loki.source.journal "system_logs" {
+      forward_to = [loki.write.obsvm.receiver]
+      max_age    = "12h"
+      labels = {
+        job     = "systemd-journal",
+        cluster = env("CLUSTER_NAME"),
+        node    = env("NODE_NAME"),
+      }
+    }
+
+    loki.write "obsvm" {
+      endpoint {
+        url = env("LOKI_URL")
+      }
+      external_labels = {
+        cluster = env("CLUSTER_NAME"),
+        node    = env("NODE_NAME"),
+      }
+    }
+    {{- end }}
+---
+# Alloy DaemonSet
+# One pod per node — scrapes local exporters, pushes to central stack
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvis-alloy
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-alloy
+    {{- include "nvis-gpu-agents.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: nvis-alloy
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvis-alloy
+        {{- include "nvis-gpu-agents.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: nvis-gpu-agents
+      hostNetwork: true   # Must match DCGM + node_exporter hostNetwork so localhost works
+      dnsPolicy: ClusterFirstWithHostNet
+      nodeSelector:
+        {{- toYaml .Values.alloy.nodeSelector | nindent 8 }}
+      tolerations:
+        {{- toYaml .Values.alloy.tolerations | nindent 8 }}
+      containers:
+        - name: alloy
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.alloy.image.repository "tag" .Values.alloy.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - run
+            - /etc/alloy/config.alloy
+            - --storage.path=/var/lib/alloy
+            - --server.http.listen-addr=0.0.0.0:12345
+          env:
+            # NODE_NAME: injected by K8s Downward API — gives us the actual hostname
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            # CLUSTER_NAME: from Helm values
+            - name: CLUSTER_NAME
+              value: {{ .Values.cluster | quote }}
+            # Remote endpoints
+            - name: PROMETHEUS_URL
+              value: {{ .Values.remote.prometheusUrl | quote }}
+            - name: LOKI_URL
+              value: {{ .Values.remote.lokiUrl | quote }}
+          volumeMounts:
+            - name: alloy-config
+              mountPath: /etc/alloy
+            - name: alloy-storage
+              mountPath: /var/lib/alloy
+            {{- if .Values.alloy.collectJournalLogs }}
+            - name: journal
+              mountPath: /var/log/journal
+              readOnly: true
+            - name: machine-id
+              mountPath: /etc/machine-id
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.alloy.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 12345
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 12345
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: alloy-config
+          configMap:
+            name: nvis-alloy-config
+        - name: alloy-storage
+          emptyDir: {}
+        {{- if .Values.alloy.collectJournalLogs }}
+        - name: journal
+          hostPath:
+            path: /var/log/journal
+        - name: machine-id
+          hostPath:
+            path: /etc/machine-id
+        {{- end }}
+{{- end }}

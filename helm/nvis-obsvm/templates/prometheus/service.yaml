@@ -1,0 +1,45 @@
+{{- if .Values.prometheus.enabled }}
+---
+# =============================================================================
+# Prometheus Service
+# =============================================================================
+# ExternalIPs + NodePort: kube-proxy binds port 9090 on the ObsVM host NIC.
+# Equivalent to Docker "ports: 9090:9090" — no ServiceLB or hostPort needed.
+# obsvm.externalIP is set at install time to the ObsVM host IP.
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-obsvm-prometheus
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.port }}
+      targetPort: {{ .Values.prometheus.port }}
+      protocol: TCP
+---
+# Headless service for StatefulSet DNS (nvis-prometheus-0.nvis-prometheus-headless)
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-prometheus-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nvis-prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.port }}
+      targetPort: {{ .Values.prometheus.port }}
+{{- end }}

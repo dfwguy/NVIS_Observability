@@ -1,0 +1,180 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# =============================================================================
+# NetworkPolicy — Prometheus
+# =============================================================================
+# Allow: scrape from anything in namespace, remote_write from GPU agents
+# Deny: all other ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nvis-prometheus-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: nvis-prometheus
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Grafana → Prometheus (query)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nvis-grafana
+      ports:
+        - port: {{ .Values.prometheus.port }}
+    # Any pod in this namespace → Prometheus (for remote_write / scrape)
+    - from:
+        - podSelector: {}
+      ports:
+        - port: {{ .Values.prometheus.port }}
+    # External GPU nodes → Prometheus remote_write (namespaceSelector: all)
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - port: {{ .Values.prometheus.port }}
+  egress:
+    # Allow all egress (Prometheus needs to scrape exporters + remote_write to VM/Thanos)
+    - {}
+---
+# =============================================================================
+# NetworkPolicy — Grafana
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nvis-grafana-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: nvis-grafana
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # External browser access via NodePort / LoadBalancer
+    - ports:
+        - port: {{ .Values.grafana.port }}
+  egress:
+    # Grafana → Prometheus, Loki, VictoriaMetrics, Thanos (all in same namespace)
+    - to:
+        - podSelector: {}
+    # Grafana → DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+---
+# =============================================================================
+# NetworkPolicy — Loki
+# =============================================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nvis-loki-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: nvis-loki
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Grafana → Loki (query)
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nvis-grafana
+      ports:
+        - port: {{ .Values.loki.port }}
+    # GPU agents push logs to Loki from any namespace
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - port: {{ .Values.loki.port }}
+  egress:
+    - {}
+---
+# =============================================================================
+# NetworkPolicy — VictoriaMetrics (only when storage=victoria)
+# =============================================================================
+{{- if and .Values.victoriametrics.enabled (eq (include "nvis.storage" .) "victoria") }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nvis-victoriametrics-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: nvis-victoriametrics
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus → VictoriaMetrics remote_write
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nvis-prometheus
+      ports:
+        - port: {{ .Values.victoriametrics.port }}
+    # Grafana → VictoriaMetrics query
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nvis-grafana
+      ports:
+        - port: {{ .Values.victoriametrics.port }}
+  egress:
+    - {}
+{{- end }}
+---
+# =============================================================================
+# NetworkPolicy — Exporters (BCM, Slurm, S4K)
+# =============================================================================
+# Exporters only need to be scraped by Prometheus (ingress) and
+# need egress to BCM host (SSH) and DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: nvis-exporters-netpol
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: nvis-observability
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Prometheus scrapes exporters
+    - from:
+        - podSelector:
+            matchLabels:
+              app: nvis-prometheus
+      ports:
+        - port: {{ .Values.bcmExporter.port }}
+        - port: {{ .Values.slurmExporter.port }}
+        - port: {{ .Values.s4kGenerator.port }}
+  egress:
+    # SSH to BCM host (port 22) and DNS
+    - {}
+{{- end }}

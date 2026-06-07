@@ -1,0 +1,29 @@
+{{/*
+=============================================================================
+gpu-agents-values.yaml — placeholder / instructions
+=============================================================================
+The nvis-gpu-agents chart is a SEPARATE Helm chart that owns the DaemonSets
+on GPU nodes (DCGM exporter, node-exporter, Alloy logs collector). It is NOT
+installed by this chart; install.sh handles it as a second helm install pass.
+
+The values for nvis-gpu-agents are derived from this chart's
+.Values.integrations.{dcgm,nodeExporter,alloyLogs}.enabled toggles. install.sh
+materializes the following YAML at install time:
+
+  dcgmExporter:
+    enabled: {{ .Values.integrations.dcgm.enabled }}
+  nodeExporter:
+    enabled: {{ .Values.integrations.nodeExporter.enabled }}
+  alloy:
+    enabled: {{ .Values.integrations.alloyLogs.enabled }}
+  obsvm:
+    prometheusUrl: "http://nvis-prometheus.{{ .Release.Namespace }}.svc:{{ .Values.prometheus.port }}/api/v1/write"
+    lokiUrl: "http://nvis-loki.{{ .Release.Namespace }}.svc:{{ .Values.loki.port }}/loki/api/v1/push"
+  cluster:
+    name: {{ .Values.cluster.name | quote }}
+    dgxFlavor: {{ .Values.cluster.dgxFlavor | quote }}
+
+This file emits no Kubernetes resources — it is documentation that lives in
+the templates directory so it survives chart packaging.
+=============================================================================
+*/}}

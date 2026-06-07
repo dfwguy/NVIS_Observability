@@ -1,0 +1,1343 @@
+{
+  "title": "${dgx_flavor} - NodeManager Power Telemetry (dcPlatform / FixPwr / CPU / DRAM / GPU)",
+  "uid": "nvis-hwval-nm-power",
+  "tags": [
+    "nvis",
+    "redfish",
+    "nodemanager",
+    "power",
+    "hwval"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "editable": true,
+  "graphTooltip": 1,
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "nvis-prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data Source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "name": "cluster",
+        "label": "Cluster",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "nvis-prometheus"
+        },
+        "query": {
+          "query": "label_values(up, cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "allValue": ".*",
+        "definition": "label_values(up, cluster)"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(redfish_fast_up, dgx_flavor)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "DGX Flavor",
+        "multi": false,
+        "name": "dgx_flavor",
+        "options": [],
+        "query": {
+          "query": "label_values(redfish_fast_up, dgx_flavor)",
+          "refId": "DgxFlavorQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "allValue": ".*"
+      },
+      {
+        "name": "bmc",
+        "label": "BMC",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "nvis-prometheus"
+        },
+        "query": {
+          "query": "label_values(redfish_nm_dcPlatformPower_avg{cluster=~\"$cluster\"}, bmc)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "allValue": ".*"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "type": "row",
+      "title": "DC Platform Power",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "dcPlatformPower_avg",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 3000,
+                "color": "yellow"
+              },
+              {
+                "value": 6000,
+                "color": "orange"
+              },
+              {
+                "value": 9000,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dcPlatformPower_avg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "dcPlatformPowerDGX_avg",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1000,
+                "color": "yellow"
+              },
+              {
+                "value": 2000,
+                "color": "orange"
+              },
+              {
+                "value": 3000,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dcPlatformPowerDGX_avg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "dcPlatformPowerHGX_avg",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 2000,
+                "color": "yellow"
+              },
+              {
+                "value": 5000,
+                "color": "orange"
+              },
+              {
+                "value": 7000,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dcPlatformPowerHGX_avg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "dcPlatformEnergy",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 1,
+        "w": 6,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "joule",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dcPlatformEnergy{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Platform Power vs Limits — dcPlatformPower_avg / Limit1 / Limit2",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 6,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Limit.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dcPlatformPower_avg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Power_avg {{bmc}}"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_dcPlatformPowerLimit1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Limit1 {{bmc}}"
+        },
+        {
+          "refId": "C",
+          "expr": "redfish_nm_dcPlatformPowerLimit2{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Limit2 {{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "type": "row",
+      "title": "Fixed-Window Power Averages (FixPwr*)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "FixPwrAverage / FixPwrDGXAvg / FixPwrHGXAvg",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 8,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_FixPwrAverage{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "FixPwrAverage {{bmc}}"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_FixPwrDGXAvg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "FixPwrDGXAvg {{bmc}}"
+        },
+        {
+          "refId": "C",
+          "expr": "redfish_nm_FixPwrHGXAvg{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "FixPwrHGXAvg {{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 300,
+      "type": "row",
+      "title": "Per-GPU Power (HGX MetricReport — GPU_0..7)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 23,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Per-GPU Power — HGX_GPU_0..7_Power_0",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 18,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 6,
+            "showPoints": "never"
+          }
+        }
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "last",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_component_power_watts{cluster=~\"$cluster\", bmc=~\"$bmc\", component=~\"HGX_GPU_[0-7]_Power_0\"}",
+          "legendFormat": "{{component}}"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "stat",
+      "title": "Total HGX GPU Power (sum 0..7)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 24,
+        "w": 6,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "decimals": 1,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 3000,
+                "color": "yellow"
+              },
+              {
+                "value": 5500,
+                "color": "red"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (bmc) (redfish_component_power_watts{cluster=~\"$cluster\", bmc=~\"$bmc\", component=~\"HGX_GPU_[0-7]_Power_0\"})",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 400,
+      "type": "row",
+      "title": "CPU Package Power (Socket 0 / 1)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "cpuPackagePower_avg + Limits",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 35,
+        "w": 18,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 6,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Limit.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "last",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_cpuPackagePower_avg_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Pkg0_avg {{bmc}}"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_cpuPackagePower_avg_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Pkg1_avg {{bmc}}"
+        },
+        {
+          "refId": "C",
+          "expr": "redfish_nm_cpuPackagePowerLimit1_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Pkg0_Limit1 {{bmc}}"
+        },
+        {
+          "refId": "D",
+          "expr": "redfish_nm_cpuPackagePowerLimit1_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Pkg1_Limit1 {{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "Core Efficiency (S0 / S1)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 35,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_coreEfficiency_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "S0"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_coreEfficiency_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "S1"
+        }
+      ]
+    },
+    {
+      "id": 500,
+      "type": "row",
+      "title": "DRAM Power (Socket 0 / 1)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 43,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 40,
+      "type": "timeseries",
+      "title": "dramPower_avg + dramPowerLimit",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 44,
+        "w": 18,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "watt",
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 6,
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*Limit.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "last",
+            "max",
+            "mean"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_dramPower_avg_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "DRAM0_avg {{bmc}}"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_dramPower_avg_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "DRAM1_avg {{bmc}}"
+        },
+        {
+          "refId": "C",
+          "expr": "redfish_nm_dramPowerLimit_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "DRAM0_Limit {{bmc}}"
+        },
+        {
+          "refId": "D",
+          "expr": "redfish_nm_dramPowerLimit_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "DRAM1_Limit {{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "type": "stat",
+      "title": "DIMMs (S0 / S1 / Total)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 44,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_DIMM_Count_Socket_0{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Socket 0"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_DIMM_Count_Socket_1{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Socket 1"
+        },
+        {
+          "refId": "C",
+          "expr": "redfish_nm_DIMM_Count_Total{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "Total"
+        }
+      ]
+    },
+    {
+      "id": 600,
+      "type": "row",
+      "title": "PSU & Domain Policy",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 50,
+      "type": "stat",
+      "title": "PSU Working Count",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 53,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 4,
+                "color": "yellow"
+              },
+              {
+                "value": 6,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_PSU_WORKING_CNT{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "type": "stat",
+      "title": "PSU Active Policy",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 53,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_PSU_Active_Policy{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "type": "stat",
+      "title": "PSU Redundancy Policy",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 53,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_PSU_Redundancy_Policy{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "type": "stat",
+      "title": "Domain Policy Active",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 53,
+        "w": 6,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "yellow"
+              },
+              {
+                "value": 1,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_Domain_Policy_Active{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 54,
+      "type": "stat",
+      "title": "GPU Power Brake Asserted",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 57,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "red"
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "Not Asserted",
+                  "color": "green"
+                },
+                "1": {
+                  "text": "ASSERTED",
+                  "color": "red"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_GPU_PWR_BRAKE{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 55,
+      "type": "stat",
+      "title": "GPUs Present",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 57,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "red"
+              },
+              {
+                "value": 8,
+                "color": "green"
+              }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_GPU_PWR_PRSNT{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "{{bmc}}"
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "type": "stat",
+      "title": "Available CPUs / GPUs",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 57,
+        "w": 8,
+        "h": 4
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "redfish_nm_AvblNoCPU{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "CPUs"
+        },
+        {
+          "refId": "B",
+          "expr": "redfish_nm_AvblNoGPU{cluster=~\"$cluster\", bmc=~\"$bmc\"}",
+          "legendFormat": "GPUs"
+        }
+      ]
+    }
+  ]
+}

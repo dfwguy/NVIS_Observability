@@ -1,0 +1,114 @@
+{{- if .Values.rbac.create }}
+---
+# =============================================================================
+# RBAC — ServiceAccounts (minimal permissions, no cluster-wide access)
+# =============================================================================
+
+# Prometheus — needs to list/watch pods/services/endpoints for service discovery
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-prometheus
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: nvis-prometheus
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/metrics", "/metrics/cadvisor"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: nvis-prometheus
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: nvis-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: nvis-prometheus
+    namespace: {{ .Values.namespace }}
+---
+# Grafana — no K8s API access needed (reads from configmap volumes)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+# Loki — no K8s API access needed
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-loki
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-loki
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+# VictoriaMetrics — no K8s API access needed
+{{- if and .Values.victoriametrics.enabled (eq (include "nvis.storage" .) "victoria") }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-victoriametrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-victoriametrics
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+{{- end }}
+---
+# Exporters — shared ServiceAccount, no K8s API access
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-exporters
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: nvis-observability
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+---
+{{- if and .Values.thanos.enabled (eq (include "nvis.storage" .) "thanos") }}
+# Thanos — no K8s API access needed in single-site mode
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nvis-thanos
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/part-of: nvis-observability
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+automountServiceAccountToken: false
+{{- end }}
+{{- end }}

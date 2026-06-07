@@ -1,0 +1,49 @@
+{{- if and .Values.grafana.enabled .Values.grafana.hpa.enabled }}
+---
+# =============================================================================
+# Grafana HorizontalPodAutoscaler
+# =============================================================================
+# Grafana Deployment uses strategy: Recreate (RWO PVC).
+# HPA with Recreate: when CPU spikes, HPA increases replicas — but the second
+# replica will PENDING until the first releases the PVC (which happens on pod
+# termination). This is safe but not instant HA.
+#
+# For true HA: migrate Grafana to PostgreSQL and change PVC to RWX (NFS/Ceph).
+# Then switch strategy to RollingUpdate.
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nvis-grafana-hpa
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nvis-grafana
+  minReplicas: {{ .Values.grafana.hpa.minReplicas }}
+  maxReplicas: {{ .Values.grafana.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.grafana.hpa.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+{{- end }}

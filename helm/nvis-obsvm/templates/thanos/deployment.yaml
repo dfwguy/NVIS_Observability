@@ -1,0 +1,158 @@
+{{- if and .Values.thanos.enabled .Values.thanos.receive.enabled (eq (include "nvis.storage" .) "thanos") }}
+---
+# =============================================================================
+# Thanos Receive — accepts Prometheus remote_write (replaces VictoriaMetrics)
+# =============================================================================
+# Thanos Receive acts as the write path for the Thanos stack.
+# Prometheus remote_writes to port 19291; Receive stores data in local TSDB
+# and exposes it via gRPC (port 10901) to the Querier.
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nvis-thanos-receive
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-receive
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-thanos-receive
+  serviceName: nvis-thanos-receive-headless
+  podManagementPolicy: OrderedReady
+  template:
+    metadata:
+      labels:
+        app: nvis-thanos-receive
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-thanos
+      initContainers:
+        - name: fix-permissions
+          image: {{ include "nvis.image" (dict "root" . "repo" "busybox" "tag" "1.36") }}
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 65534:65534 /data || true"]
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      containers:
+        - name: thanos-receive
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.thanos.image.repository "tag" .Values.thanos.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - receive
+            - --tsdb.path=/data
+            - --tsdb.retention=30d
+            - --receive.replication-factor={{ .Values.thanos.receive.replicationFactor }}
+            - --grpc-address=0.0.0.0:{{ .Values.thanos.receive.grpcPort }}
+            - --http-address=0.0.0.0:{{ .Values.thanos.receive.httpPort }}
+            - --remote-write.address=0.0.0.0:{{ .Values.thanos.receive.port }}
+            - --label=receive_replica="0"
+          ports:
+            - name: remote-write
+              containerPort: {{ .Values.thanos.receive.port }}
+            - name: grpc
+              containerPort: {{ .Values.thanos.receive.grpcPort }}
+            - name: http
+              containerPort: {{ .Values.thanos.receive.httpPort }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            {{- toYaml .Values.thanos.receive.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.thanos.receive.httpPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: {{ .Values.thanos.receive.httpPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: nvis-thanos-receive
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.thanos.receive.persistence.storageClass }}
+        storageClassName: {{ .Values.thanos.receive.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.thanos.receive.persistence.size }}
+---
+# Thanos Receive Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-thanos-receive
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-receive
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-thanos-receive
+  ports:
+    - name: remote-write
+      port: {{ .Values.thanos.receive.port }}
+      targetPort: {{ .Values.thanos.receive.port }}
+    - name: grpc
+      port: {{ .Values.thanos.receive.grpcPort }}
+      targetPort: {{ .Values.thanos.receive.grpcPort }}
+    - name: http
+      port: {{ .Values.thanos.receive.httpPort }}
+      targetPort: {{ .Values.thanos.receive.httpPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-thanos-receive-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-receive
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nvis-thanos-receive
+  ports:
+    - name: grpc
+      port: {{ .Values.thanos.receive.grpcPort }}
+      targetPort: {{ .Values.thanos.receive.grpcPort }}
+    - name: http
+      port: {{ .Values.thanos.receive.httpPort }}
+      targetPort: {{ .Values.thanos.receive.httpPort }}
+{{- end }}

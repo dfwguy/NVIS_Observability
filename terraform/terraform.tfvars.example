@@ -1,0 +1,46 @@
+# terraform.tfvars.example
+# Copy to terraform.tfvars and fill in your site values.
+# terraform.tfvars is git-ignored — never commit credentials.
+
+# ---------------------------------------------------------------------------
+# Grafana connection
+# ---------------------------------------------------------------------------
+
+# IP or hostname reachable from where you run terraform apply (ObsVM or jump host)
+grafana_url = "http://YOUR_OBSVM_IP:3000"
+
+# Basic auth "admin:<password>" or a service-account token (recommended for prod)
+grafana_auth = "admin:changeme"
+
+# ---------------------------------------------------------------------------
+# Cluster identity  <-- MOST IMPORTANT: must match exporter label values
+#
+# This must exactly match the 'cluster' label attached by:
+#   - DCGM exporter:       --extra-labels cluster=<cluster_name>
+#   - Slurm exporter:      cluster label in slurm_exporter.yaml
+#   - SPX/LLDPq exporter:  cluster label in scrape config
+#   - node-exporter:       --collector.textfile.directory config
+#
+# Examples:
+#   cluster_name = "berta"          # NVIDIA Berta cluster
+#   cluster_name = "dgx-superpod"   # DGX SuperPOD
+#   cluster_name = "prod-h100"      # production H100 cluster
+# ---------------------------------------------------------------------------
+
+cluster_name = "my-cluster"
+
+# ---------------------------------------------------------------------------
+# Grafana folder (usually no change needed)
+# ---------------------------------------------------------------------------
+
+grafana_folder_name = "NVIS"
+grafana_folder_uid  = "nvis-observability"
+
+# ---------------------------------------------------------------------------
+# Datasource endpoints
+# Use the internal Kubernetes service name if Grafana runs in-cluster,
+# or the host IP for bare-metal installs.
+# ---------------------------------------------------------------------------
+
+victoriametrics_url = "http://nvis-victoriametrics:8428"
+loki_url            = "http://nvis-loki:3100"

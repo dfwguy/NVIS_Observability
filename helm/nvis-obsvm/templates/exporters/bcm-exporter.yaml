@@ -1,0 +1,159 @@
+{{- if .Values.bcmExporter.enabled }}
+{{- /*
+  NOTE: The ConfigMap nvis-bcm-exporter-scripts is NOT defined in this template.
+  setup-k8s.sh creates it before helm install via kubectl create configmap.
+  This prevents helm from reinstating the placeholder script on every upgrade.
+*/ -}}
+---
+# =============================================================================
+# BCM Exporter Deployment
+# =============================================================================
+# Security note: BCM exporter needs SSH access to the BCM head node.
+# The SSH private key is stored in a K8s Secret (nvis-bcm-ssh-key).
+# The secret is NOT included in this chart — setup.sh creates it before
+# helm install using:
+#   kubectl create secret generic nvis-bcm-ssh-key \
+#     --from-file=id_ed25519=~/.ssh/id_ed25519 -n nvis-monitoring
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-bcm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-bcm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-bcm-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nvis-bcm-exporter
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+      annotations:
+        checksum/scripts: {{ .Values.bcmExporter.image.tag | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-exporters
+      # Init: install openssh-client (needed for SSH to BCM)
+      # This is done in an init container so the main container stays slim.
+      initContainers:
+        - name: install-ssh
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.bcmExporter.image.repository "tag" .Values.bcmExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              apt-get update -qq && apt-get install -y -qq openssh-client && \
+              cp -r /usr/bin/ssh /shared-bin/ssh && \
+              cp -r /usr/lib/x86_64-linux-gnu/libcrypto* /shared-bin/ 2>/dev/null || \
+              cp -r /usr/lib/aarch64-linux-gnu/libcrypto* /shared-bin/ 2>/dev/null || true
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: shared-bin
+              mountPath: /shared-bin
+      containers:
+        - name: bcm-exporter
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.bcmExporter.image.repository "tag" .Values.bcmExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/scripts/bcm_exporter.py"]
+          env:
+            - name: BCM_HOST
+              value: {{ .Values.bcmExporter.env.BCM_HOST | quote }}
+            - name: BCM_USER
+              value: {{ .Values.bcmExporter.env.BCM_USER | quote }}
+            - name: BCM_SSH_KEY
+              value: "/ssh/id_ed25519"
+            - name: CLUSTER_NAME
+              value: {{ .Values.clusterName | quote }}
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.bcmExporter.env.SCRAPE_INTERVAL | quote }}
+            - name: PORT
+              value: {{ .Values.bcmExporter.port | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.bcmExporter.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+            - name: shared-bin
+              mountPath: /shared-bin
+              readOnly: true
+          resources:
+            {{- toYaml .Values.bcmExporter.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.bcmExporter.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.bcmExporter.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+      volumes:
+        - name: scripts
+          configMap:
+            name: nvis-bcm-exporter-scripts
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.bcmExporter.sshSecretName }}
+            defaultMode: 0400    # SSH requires strict permissions on private key
+        - name: shared-bin
+          emptyDir: {}
+---
+# =============================================================================
+# BCM Exporter Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-bcm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-bcm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-bcm-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.bcmExporter.port }}
+      targetPort: {{ .Values.bcmExporter.port }}
+      protocol: TCP
+{{- end }}

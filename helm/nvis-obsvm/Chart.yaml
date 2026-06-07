@@ -1,0 +1,28 @@
+apiVersion: v2
+name: nvis-obsvm
+description: >
+  NVIS Observability Stack — Prometheus, Loki, Grafana, VictoriaMetrics/Thanos,
+  BCM Exporter, Slurm Job Exporter, and Stress-4k Generator.
+  Deploys the central monitoring plane inside a Kubernetes cluster.
+  GPU node agents (nvis-gpu-agents) push metrics/logs to this stack.
+  Supports offline/airgap deployment, Thanos or VictoriaMetrics storage backend,
+  HPA autoscaling, NetworkPolicies, RBAC, and non-root security contexts.
+type: application
+version: 2.2.0
+appVersion: "2.2.0"
+keywords:
+  - prometheus
+  - grafana
+  - loki
+  - victoriametrics
+  - thanos
+  - observability
+  - nvidia
+  - gpu
+  - airgap
+maintainers:
+  - name: NVIS CBU
+annotations:
+  # Offline bundle size target: ~950MB (all images pre-pulled and tarred)
+  bundle.nvis/size-target: "950MB"
+  bundle.nvis/airgap-ready: "true"

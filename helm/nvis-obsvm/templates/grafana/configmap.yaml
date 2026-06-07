@@ -1,0 +1,87 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana Datasource Provisioning ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-datasources
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      # Prometheus = short-term (15d) scrape + alerting buffer. NOT the default
+      # query source: Grafana defaults to the long-term store (VictoriaMetrics /
+      # Thanos) which holds recent+old data via remote_write, so dashboard time
+      # ranges beyond Prometheus retention have no gaps.
+      - name: Prometheus
+        type: prometheus
+        uid: nvis-prometheus
+        url: http://nvis-obsvm-prometheus.{{ .Values.namespace }}.svc:{{ .Values.prometheus.port }}
+        access: proxy
+        jsonData:
+          timeInterval: "15s"
+          httpMethod: POST
+
+      - name: Loki
+        type: loki
+        uid: nvis-loki
+        url: http://nvis-obsvm-loki.{{ .Values.namespace }}.svc:{{ .Values.loki.port }}
+        access: proxy
+        jsonData:
+          maxLines: 5000
+
+      {{- if and .Values.victoriametrics.enabled (eq (include "nvis.storage" .) "victoria") }}
+      - name: VictoriaMetrics
+        type: prometheus
+        uid: nvis-victoriametrics
+        url: http://nvis-victoriametrics.{{ .Values.namespace }}.svc:{{ .Values.victoriametrics.port }}
+        access: proxy
+        isDefault: true   # long-term store (12mo); holds recent+old via remote_write -> seamless 30d queries
+        jsonData:
+          timeInterval: "15s"
+          httpMethod: POST
+      {{- end }}
+
+      {{- if and .Values.thanos.enabled (eq (include "nvis.storage" .) "thanos") }}
+      - name: Thanos
+        type: prometheus
+        uid: thanos
+        url: http://nvis-thanos-querier.{{ .Values.namespace }}.svc:{{ .Values.thanos.querier.port }}
+        access: proxy
+        isDefault: true   # long-term store when storage=thanos -> seamless long-range queries
+        jsonData:
+          timeInterval: "15s"
+          httpMethod: POST
+      {{- end }}
+---
+# =============================================================================
+# Grafana Dashboard Provider Provisioning ConfigMap
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-dashboard-provisioning
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: nvis-dashboards
+        type: file
+        folder: NVIS
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+{{- end }}

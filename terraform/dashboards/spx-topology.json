@@ -1,0 +1,860 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "panels": [
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "id": null,
+      "options": {
+        "content": "<div style=\"display:flex;align-items:center;height:100%;\"><a href=\"/d/nvis-demo-home\" style=\"display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#00d4ff;border:1px solid #00d4ff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.5px;box-shadow:0 0 8px rgba(0,212,255,0.3);transition:all 0.2s;\" onmouseover=\"this.style.boxShadow='0 0 16px rgba(0,212,255,0.6)'\" onmouseout=\"this.style.boxShadow='0 0 8px rgba(0,212,255,0.3)'\">&#127968; NVIS Home</a></div>",
+        "mode": "html"
+      },
+      "title": "",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 1,
+      "title": "Switch Health",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 3
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F41-34-S1-PL1-SPXSPINE-01\"}) * 100 + spx_switch_up{switch=\"F41-34-S1-PL1-SPXSPINE-01\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F41-34-S1-PL1-SPXSPINE-01\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F41-34-S1-PL1-SPXSPINE-01\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F41-34-S1-PL1-SPXSPINE-01\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F41-34-S1-PL1-SPXSPINE-01\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "SPINE PL1 (F41-34)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 3
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F41-32-S1-PL2-SPXSPINE-01\"}) * 100 + spx_switch_up{switch=\"F41-32-S1-PL2-SPXSPINE-01\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F41-32-S1-PL2-SPXSPINE-01\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F41-32-S1-PL2-SPXSPINE-01\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F41-32-S1-PL2-SPXSPINE-01\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F41-32-S1-PL2-SPXSPINE-01\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "SPINE PL2 (F41-32)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 3
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F38-29-S1-PL1-SPXLEAF-01\"}) * 100 + spx_switch_up{switch=\"F38-29-S1-PL1-SPXLEAF-01\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F38-29-S1-PL1-SPXLEAF-01\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F38-29-S1-PL1-SPXLEAF-01\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F38-29-S1-PL1-SPXLEAF-01\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F38-29-S1-PL1-SPXLEAF-01\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "LEAF PL1-01 (F38-29)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 3
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F42-48-S1-PL1-SPXLEAF-02\"}) * 100 + spx_switch_up{switch=\"F42-48-S1-PL1-SPXLEAF-02\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F42-48-S1-PL1-SPXLEAF-02\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F42-48-S1-PL1-SPXLEAF-02\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F42-48-S1-PL1-SPXLEAF-02\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F42-48-S1-PL1-SPXLEAF-02\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "LEAF PL1-02 (F42-48)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 3
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F38-35-S1-PL2-SPXLEAF-01\"}) * 100 + spx_switch_up{switch=\"F38-35-S1-PL2-SPXLEAF-01\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F38-35-S1-PL2-SPXLEAF-01\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F38-35-S1-PL2-SPXLEAF-01\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F38-35-S1-PL2-SPXLEAF-01\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F38-35-S1-PL2-SPXLEAF-01\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "LEAF PL2-01 (F38-35)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "decimals": 3,
+          "mappings": [
+            {
+              "options": {
+                "from": -1,
+                "result": {
+                  "color": "green",
+                  "text": "HEALTHY"
+                },
+                "to": 0.0001
+              },
+              "type": "range"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1
+              },
+              {
+                "color": "orange",
+                "value": 50
+              },
+              {
+                "color": "red",
+                "value": 99
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 3
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "(1 - spx_switch_up{switch=\"F38-27-S1-PL2-SPXLEAF-02\"}) * 100 + spx_switch_up{switch=\"F38-27-S1-PL2-SPXLEAF-02\"} * clamp_max(max(rate(spx_interface_transmit_bytes_total{switch=\"F38-27-S1-PL2-SPXLEAF-02\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{switch=\"F38-27-S1-PL2-SPXLEAF-02\"}*8,1) * 100) + 100*sum(rate(spx_interface_transmit_drop_total{switch=\"F38-27-S1-PL2-SPXLEAF-02\"}[2m]) + rate(spx_interface_receive_drop_total{switch=\"F38-27-S1-PL2-SPXLEAF-02\"}[2m])), 100)",
+          "instant": true,
+          "legendFormat": "health",
+          "refId": "A"
+        }
+      ],
+      "title": "LEAF PL2-02 (F38-27)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "id": 10,
+      "title": "Leaf-Spine Link Utilization",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 8,
+            "showPoints": "never"
+          },
+          "decimals": 2,
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 11,
+      "options": {
+        "legend": {
+          "calcs": [
+            "max",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "rate(spx_interface_transmit_bytes_total{interface=~\"swp5[7-9].*|swp6[0-4].*\"}[2m]) / clamp_min(spx_interface_speed_bytes{interface=~\"swp5[7-9].*|swp6[0-4].*\"},1) * 100",
+          "legendFormat": "{{switch}} {{interface}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Leaf uplink TX utilization (% of link speed) \u2014 per leaf/interface",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 12,
+      "title": "Leaf-Spine Link Table",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-victoriametrics"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Util %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "mode": "gradient",
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "red",
+                      "value": 90
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "TX drop/s"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.0001
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "RX drop/s"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 0.0001
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Up"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "0": {
+                        "color": "red",
+                        "text": "DOWN"
+                      },
+                      "1": {
+                        "color": "green",
+                        "text": "UP"
+                      }
+                    },
+                    "type": "value"
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 14,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 13,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Util %"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "rate(spx_interface_transmit_bytes_total{interface=~\"swp5[7-9].*|swp6[0-4].*\"}[2m])*8 / clamp_min(spx_interface_speed_bytes{interface=~\"swp5[7-9].*|swp6[0-4].*\"}*8,1) * 100",
+          "format": "table",
+          "instant": true,
+          "refId": "util"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "rate(spx_interface_transmit_drop_total{interface=~\"swp5[7-9].*|swp6[0-4].*\"}[2m])",
+          "format": "table",
+          "instant": true,
+          "refId": "txdrop"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "rate(spx_interface_receive_drop_total{interface=~\"swp5[7-9].*|swp6[0-4].*\"}[2m])",
+          "format": "table",
+          "instant": true,
+          "refId": "rxdrop"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-victoriametrics"
+          },
+          "expr": "spx_interface_up{interface=~\"swp5[7-9].*|swp6[0-4].*\"}",
+          "format": "table",
+          "instant": true,
+          "refId": "up"
+        }
+      ],
+      "title": "Leaf-spine uplink links (live)",
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "cluster": true,
+              "instance": true,
+              "job": true
+            },
+            "renameByName": {
+              "Value #rxdrop": "RX drop/s",
+              "Value #txdrop": "TX drop/s",
+              "Value #up": "Up",
+              "Value #util": "Util %",
+              "interface": "Interface",
+              "switch": "Switch"
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "beacon",
+    "spx",
+    "topology",
+    "nvis"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timezone": "browser",
+  "title": "SPX Fabric \u2014 Live Topology ()",
+  "uid": "spx-topology"
+}

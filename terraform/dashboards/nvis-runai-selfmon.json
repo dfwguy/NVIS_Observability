@@ -1,0 +1,838 @@
+{
+  "description": "RunAI self-monitoring — deployment health, controller status, scheduling failures, CPU exhaustion detection, workqueue backlogs, GPU operator stack",
+  "links": [
+    {
+      "icon": "home",
+      "tags": [],
+      "targetBlank": false,
+      "title": "\ud83c\udfe0 NVIS Home",
+      "tooltip": "Back to NVIS Home",
+      "type": "link",
+      "url": "/d/nvis-demo-home"
+    },
+    {
+      "icon": "dashboard",
+      "tags": [],
+      "targetBlank": false,
+      "title": "\u2699\ufe0f K8s & User Mgmt",
+      "type": "link",
+      "url": "/d/nvis-k8s-user-mgmt"
+    }
+  ],
+  "panels": [
+    {
+      "gridPos": { "h": 2, "w": 3, "x": 0, "y": 0 },
+      "id": 9900,
+      "options": {
+        "content": "<div style=\"display:flex;align-items:center;height:100%;\"><a href=\"/d/nvis-demo-home\" style=\"display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#00d4ff;border:1px solid #00d4ff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;box-shadow:0 0 8px rgba(0,212,255,0.3);\">&#127968; NVIS Home</a></div>",
+        "mode": "html"
+      },
+      "title": "", "transparent": true, "type": "text"
+    },
+    {
+      "gridPos": { "h": 2, "w": 18, "x": 3, "y": 0 },
+      "id": 9901,
+      "options": {
+        "content": "<div style=\"display:flex;align-items:center;height:100%;padding:0 16px;\"><span style=\"font-size:22px;font-weight:700;color:#00d4ff;\">&#128683; Run:AI Self-Monitoring</span><span style=\"margin-left:16px;font-size:13px;color:#aaa;\">Deployment Health \u00b7 Controller Status \u00b7 Scheduling \u00b7 CPU Exhaustion \u00b7 GPU Operator</span></div>",
+        "mode": "html"
+      },
+      "title": "", "transparent": true, "type": "text"
+    },
+    {
+      "gridPos": { "h": 2, "w": 3, "x": 21, "y": 0 },
+      "id": 9902,
+      "options": {
+        "content": "<div style=\"display:flex;align-items:center;height:100%;\"><a href=\"/d/nvis-k8s-user-mgmt\" style=\"display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:linear-gradient(135deg,#1a2e1a,#16331e);color:#73bf69;border:1px solid #73bf69;border-radius:6px;text-decoration:none;font-size:13px;font-weight:600;box-shadow:0 0 8px rgba(115,191,105,0.3);\">&#9096; K8s Dashboard</a></div>",
+        "mode": "html"
+      },
+      "title": "", "transparent": true, "type": "text"
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 2 },
+      "id": 100,
+      "panels": [],
+      "title": "\ud83d\udea8 Deployment Health — At a Glance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pods in Running phase in runai-backend namespace",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#73bf69", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 0, "y": 3 },
+      "id": 101,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "RunAI Pods Running",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=~\"runai.*\",phase=\"Running\"})",
+          "legendFormat": "Running",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pods in Pending or Failed state — non-zero means a RunAI component is unhealthy",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 4, "y": 3 },
+      "id": 102,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "RunAI Pods Unhealthy",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(kube_pod_status_phase{namespace=~\"runai.*\",phase=~\"Pending|Failed|Unknown\"}) or vector(0)",
+          "legendFormat": "Unhealthy",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pending workloads waiting for GPU — sustained high value was the root cause of the CPU exhaustion incident",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 3 }, { "color": "red", "value": 8 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 8, "y": 3 },
+      "id": 103,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Pending Workloads",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "count(runai_workload_info_enriched{cluster=~\"$cluster\",phase=\"Pending\"}) or vector(0)",
+          "legendFormat": "Pending",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Total container restarts across all RunAI system namespaces. Non-zero = crashlooping component.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 12, "y": 3 },
+      "id": 104,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Container Restarts (1h)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=~\"runai.*\"}[1h])) or vector(0)",
+          "legendFormat": "Restarts",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Controller work queue depth across all RunAI controllers. Non-zero means reconciliation backlog — high sustained values indicate CPU exhaustion in controller.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 50 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 16, "y": 3 },
+      "id": 105,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "Controller Queue Depth",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(workqueue_depth{namespace=\"runai\"}) or vector(0)",
+          "legendFormat": "Queue Depth",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "API server request rate — sudden drops indicate API server or etcd issues",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "#b877d9", "mode": "fixed" },
+          "unit": "reqps", "decimals": 1
+        }
+      },
+      "gridPos": { "h": 3, "w": 4, "x": 20, "y": 3 },
+      "id": 106,
+      "options": { "colorMode": "background", "graphMode": "area", "justifyMode": "center", "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "auto" },
+      "title": "API Server RPS",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(rate(apiserver_request_total{job=\"apiserver\"}[5m]))",
+          "legendFormat": "RPS",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 6 },
+      "id": 200,
+      "panels": [],
+      "title": "\ud83d\udd34 CPU Exhaustion & Scheduling Failure Detection",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pending workloads over time. Sustained growth = scheduler not draining queue = CPU exhaustion or scheduling deadlock. This was the root cause of the prior incident.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 3 }, { "color": "red", "value": 8 }] },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 7 },
+      "id": 201,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "\u26a0\ufe0f Pending Workloads Over Time (Scheduling Backlog)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "count(runai_workload_info_enriched{cluster=~\"$cluster\",phase=\"Pending\"}) or vector(0)",
+          "legendFormat": "Pending workloads",
+          "refId": "A"
+        },
+        {
+          "expr": "count(runai_workload_info_enriched{cluster=~\"$cluster\",phase=\"Running\"}) or vector(0)",
+          "legendFormat": "Running workloads",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Controller work queue depth over time. Growing depth with flat or dropping add rate = controller is stuck (CPU starved). The runai-scheduler and application-controller are highest risk.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 7 },
+      "id": 202,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "\u26a0\ufe0f Controller Queue Depth (CPU Exhaustion Signal)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(job)(workqueue_depth{namespace=\"runai\"})",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Rate of unschedulable pods. Non-zero = RunAI scheduler or GPU device plugin has a problem preventing pod placement.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 15 },
+      "id": 203,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Unschedulable Pods (runai namespaces)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(namespace)(kube_pod_status_phase{namespace=~\"runai.*\",phase=\"Pending\"})",
+          "legendFormat": "Pending — {{namespace}}",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by(namespace)(kube_pod_status_phase{namespace=~\"runai.*\",phase=\"Failed\"})",
+          "legendFormat": "Failed — {{namespace}}",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "API server error rate — spikes in 5xx indicate etcd pressure or API server overload, which can cause scheduling failures and CPU exhaustion in controllers retrying failed calls.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 15 },
+      "id": 204,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "API Server Errors (4xx/5xx) — Controller Retry Driver",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(code)(rate(apiserver_request_total{job=\"apiserver\",code=~\"[45]..\"}[5m]))",
+          "legendFormat": "HTTP {{code}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+      "id": 300,
+      "panels": [],
+      "title": "\ud83e\udd16 RunAI Component Status",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pod phase for all pods in runai-backend namespace — these are the core RunAI control plane components",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Pod" }, "properties": [{ "id": "custom.width", "value": 320 }] },
+          { "matcher": { "id": "byName", "options": "Phase" }, "properties": [
+            { "id": "custom.width", "value": 100 },
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "mappings", "value": [
+              { "options": { "Running": { "color": "green", "index": 0 } }, "type": "value" },
+              { "options": { "Pending": { "color": "yellow", "index": 1 } }, "type": "value" },
+              { "options": { "Failed": { "color": "red", "index": 2 } }, "type": "value" },
+              { "options": { "Unknown": { "color": "orange", "index": 3 } }, "type": "value" }
+            ]}
+          ]},
+          { "matcher": { "id": "byName", "options": "Namespace" }, "properties": [{ "id": "custom.width", "value": 160 }] }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 23 },
+      "id": 301,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": false, "displayName": "Phase" }] },
+      "title": "RunAI Component Pod Status",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "kube_pod_status_phase{namespace=~\"runai.*\"} == 1",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "namespace": "Namespace", "pod": "Pod", "phase": "Phase" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "job": true, "instance": true, "Value": true, "uid": true, "cluster_id": true }
+        }}
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Container restart counts per pod in runai namespaces. High restart count = crashlooping, OOMKilled, or liveness probe failing.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Pod" }, "properties": [{ "id": "custom.width", "value": 280 }] },
+          { "matcher": { "id": "byName", "options": "Container" }, "properties": [{ "id": "custom.width", "value": 160 }] },
+          { "matcher": { "id": "byName", "options": "Restarts" }, "properties": [
+            { "id": "custom.displayMode", "value": "gradient-gauge" },
+            { "id": "custom.width", "value": 120 },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] } }
+          ]}
+        ]
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 23 },
+      "id": 302,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Restarts" }] },
+      "title": "Container Restarts by Pod (runai namespaces)",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "sort_desc(kube_pod_container_status_restarts_total{namespace=~\"runai.*\"} > 0)",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "pod": "Pod", "container": "Container", "namespace": "Namespace", "Value": "Restarts" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "job": true, "instance": true, "uid": true, "cluster_id": true }
+        }}
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Container restarts over time — identify when crashlooping started",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 33 },
+      "id": 303,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Container Restarts Over Time (runai namespaces)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(pod)(increase(kube_pod_container_status_restarts_total{namespace=~\"runai.*\"}[5m])) > 0",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 40 },
+      "id": 400,
+      "panels": [],
+      "title": "\u2699\ufe0f Controller Manager Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Queue depth per controller. application-controller and cluster-sync are highest risk. Sustained depth > 20 indicates CPU starvation.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 41 },
+      "id": 401,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Controller Queue Depth by Controller",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(job)(workqueue_depth{namespace=\"runai\"})",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Rate of items added to each controller's work queue. If add rate drops while queue grows, the controller is consuming slower than it should — CPU exhaustion signature.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 41 },
+      "id": 402,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Controller Queue Add Rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(job)(rate(workqueue_adds_total{namespace=\"runai\"}[5m]))",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Current queue depth snapshot by resource type — shows which resource is backlogged",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Controller" }, "properties": [{ "id": "custom.width", "value": 200 }] },
+          { "matcher": { "id": "byName", "options": "Queue" }, "properties": [{ "id": "custom.width", "value": 200 }] },
+          { "matcher": { "id": "byName", "options": "Depth" }, "properties": [
+            { "id": "custom.displayMode", "value": "gradient-gauge" },
+            { "id": "custom.width", "value": 150 },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 5 }, { "color": "red", "value": 20 }] } }
+          ]}
+        ]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 49 },
+      "id": 403,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Depth" }] },
+      "title": "Queue Depth by Resource (Snapshot)",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "workqueue_depth{namespace=\"runai\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "job": "Controller", "name": "Queue", "Value": "Depth" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "instance": true, "namespace": true, "pod": true, "container": true, "endpoint": true, "service": true, "type": true, "prometheus": true, "__replica__": true, "cluster_id": true }
+        }}
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 57 },
+      "id": 500,
+      "panels": [],
+      "title": "\ud83c\udf10 API Server & Kubelet Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "API server request rate by verb. Sudden drops = API server down. Spikes in WATCH/LIST = controller storms (typically from CPU-starved controllers retrying).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "unit": "reqps"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 58 },
+      "id": 501,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "API Server Request Rate by Verb",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(verb)(rate(apiserver_request_total{job=\"apiserver\"}[5m]))",
+          "legendFormat": "{{verb}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "API server p99 latency by verb. Growing latency in WATCH/LIST = etcd pressure, which forces controllers into retry loops and cascades into CPU exhaustion.",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "s"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 58 },
+      "id": 502,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "API Server Latency p99 (LIST/WATCH are leading indicators)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by(verb, le)(rate(apiserver_request_duration_seconds_bucket{job=\"apiserver\"}[5m])))",
+          "legendFormat": "p99 {{verb}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Kubelet running pods per compute node — sudden drop indicates kubelet crash or node drain",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 65 },
+      "id": 503,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Kubelet Running Pods per Node",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "kubelet_running_pods{job=\"kubelet\",node=~\"node.*\"}",
+          "legendFormat": "{{node}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Kubelet runtime operation errors — CreateContainerError or PodSandboxCreation errors indicate GPU driver or device plugin issues",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "ops"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 65 },
+      "id": 504,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Kubelet Runtime Errors (GPU/Container issues)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(operation_type)(rate(kubelet_runtime_operations_errors_total{job=\"kubelet\",node=~\"node.*\"}[5m]))",
+          "legendFormat": "{{operation_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 72 },
+      "id": 600,
+      "panels": [],
+      "title": "\ud83c\udfae GPU Operator Stack Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Pod status in gpu-operator namespace — DCGM exporter, device plugin, NFD, GPU feature discovery. Any non-Running pod = GPU monitoring/scheduling broken.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Pod" }, "properties": [{ "id": "custom.width", "value": 360 }] },
+          { "matcher": { "id": "byName", "options": "Phase" }, "properties": [
+            { "id": "custom.width", "value": 100 },
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "mappings", "value": [
+              { "options": { "Running": { "color": "green", "index": 0 } }, "type": "value" },
+              { "options": { "Pending": { "color": "yellow", "index": 1 } }, "type": "value" },
+              { "options": { "Failed": { "color": "red", "index": 2 } }, "type": "value" }
+            ]}
+          ]}
+        ]
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 73 },
+      "id": 601,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": false, "displayName": "Phase" }] },
+      "title": "GPU Operator Pods (DCGM, Device Plugin, NFD)",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "kube_pod_status_phase{namespace=\"gpu-operator\"} == 1",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "pod": "Pod", "phase": "Phase" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "job": true, "instance": true, "Value": true, "namespace": true, "uid": true, "cluster_id": true }
+        }}
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "GPU operator pod restart history — DCGM exporter restarts often precede GPU metric gaps; device plugin restarts cause GPU allocation failures.",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Pod" }, "properties": [{ "id": "custom.width", "value": 280 }] },
+          { "matcher": { "id": "byName", "options": "Container" }, "properties": [{ "id": "custom.width", "value": 200 }] },
+          { "matcher": { "id": "byName", "options": "Restarts" }, "properties": [
+            { "id": "custom.displayMode", "value": "gradient-gauge" },
+            { "id": "custom.width", "value": 120 },
+            { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 3 }] } }
+          ]}
+        ]
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 73 },
+      "id": 602,
+      "options": { "footer": { "show": false }, "showHeader": true, "sortBy": [{ "desc": true, "displayName": "Restarts" }] },
+      "title": "GPU Operator Pod Restarts",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "kube_pod_container_status_restarts_total{namespace=\"gpu-operator\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "pod": "Pod", "container": "Container", "Value": "Restarts" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "job": true, "instance": true, "namespace": true, "uid": true, "cluster_id": true }
+        }}
+      ]
+    },
+
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 83 },
+      "id": 700,
+      "panels": [],
+      "title": "\ud83d\udcca Workload Intelligence",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "GPU utilization per project — low utilization on running workloads may indicate GPU allocation without actual usage (RunAI scheduling issue or user code issue).",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "unit": "short"
+        }
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 84 },
+      "id": 701,
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "title": "Allocated GPUs by Project",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by(project)(runai_queue_allocated_gpus{cluster=~\"$cluster\"})",
+          "legendFormat": "{{project}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "description": "Failed workloads — source of truth from runai_workload_info which includes all phases including Failed (enriched only shows active).",
+      "fieldConfig": {
+        "defaults": { "custom": { "align": "left", "displayMode": "auto" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "User" }, "properties": [{ "id": "custom.width", "value": 150 }] },
+          { "matcher": { "id": "byName", "options": "Project" }, "properties": [{ "id": "custom.width", "value": 150 }] },
+          { "matcher": { "id": "byName", "options": "Status" }, "properties": [
+            { "id": "custom.displayMode", "value": "color-background" },
+            { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+          ]}
+        ]
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 84 },
+      "id": 702,
+      "options": { "footer": { "show": false }, "showHeader": true },
+      "title": "Failed Workloads",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "runai_workload_info{cluster=~\"$cluster\",phase=\"Failed\"}",
+          "legendFormat": "",
+          "refId": "A",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        { "id": "organize", "options": {
+          "renameByName": { "user": "User", "project": "Project", "workload_type": "Type", "detailed_status": "Status" },
+          "excludeByName": { "Time": true, "__name__": true, "cluster": true, "job": true, "instance": true, "Value": true, "cluster_id": true, "phase": true }
+        }}
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 36,
+  "tags": ["runai", "self-monitoring", "health", "k8s"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "prometheus", "uid": "${datasource}" },
+        "definition": "label_values(runai_workload_info_enriched, cluster)",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": { "query": "label_values(runai_workload_info_enriched, cluster)", "refId": "StandardVariableQuery" },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query",
+        "label": "Cluster"
+      },
+      {
+        "current": {},
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource",
+        "label": "Datasource"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Run:AI Self-Monitoring",
+  "uid": "nvis-runai-selfmon",
+  "version": 1
+}

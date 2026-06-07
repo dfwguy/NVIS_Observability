@@ -1,0 +1,96 @@
+{{- if and .Values.thanos.enabled .Values.thanos.compactor.enabled (eq (include "nvis.storage" .) "thanos") }}
+---
+# =============================================================================
+# Thanos Compactor — downsampling and retention enforcement
+# =============================================================================
+# Only 1 replica allowed (compactor is a singleton by design).
+# Runs as a StatefulSet to ensure stable identity + PVC binding.
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nvis-thanos-compactor
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-compactor
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-thanos-compactor
+  serviceName: nvis-thanos-compactor
+  template:
+    metadata:
+      labels:
+        app: nvis-thanos-compactor
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-thanos
+      containers:
+        - name: thanos-compactor
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.thanos.image.repository "tag" .Values.thanos.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - compact
+            - --http-address=0.0.0.0:10902
+            - --data-dir=/data
+            - --wait           # run continuously, not one-shot
+            - --wait-interval=5m
+            - --retention.resolution-raw={{ .Values.thanos.compactor.retentionResolutionRaw }}
+            - --retention.resolution-5m={{ .Values.thanos.compactor.retentionResolution5m }}
+            - --retention.resolution-1h={{ .Values.thanos.compactor.retentionResolution1h }}
+            {{- if eq .Values.thanos.objectStorage.type "s3" }}
+            - --objstore.config-file=/etc/thanos/objstore.yaml
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: 10902
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- if eq .Values.thanos.objectStorage.type "s3" }}
+            - name: objstore-config
+              mountPath: /etc/thanos
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.thanos.compactor.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 10902
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      {{- if eq .Values.thanos.objectStorage.type "s3" }}
+      volumes:
+        - name: objstore-config
+          secret:
+            secretName: nvis-thanos-objstore-config
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.thanos.compactor.persistence.storageClass }}
+        storageClassName: {{ .Values.thanos.compactor.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.thanos.compactor.persistence.size }}
+{{- end }}

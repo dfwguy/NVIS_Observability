@@ -1,0 +1,94 @@
+{{- if .Values.integrations.slurm.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-slurm-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-slurm-exporter
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nvis-slurm-exporter
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-slurm-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: slurm-exporter
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/slurm-job-exporter:{{ include "nvis-platform.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.cluster.name | quote }}
+            - name: BCM_HOST
+              value: {{ .Values.integrations.bcm.host | quote }}
+            - name: BCM_USER
+              value: {{ .Values.integrations.bcm.user | quote }}
+            - name: BCM_SSH_KEY
+              value: "/ssh/id_ed25519"
+            - name: SLURM_PORT
+              value: {{ .Values.integrations.slurm.port | quote }}
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.integrations.slurm.scrapeInterval | quote }}
+            - name: SACCT_HOURS
+              value: {{ .Values.integrations.slurm.sacctHours | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.integrations.slurm.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.integrations.bcm.sshKeySecret }}
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-slurm-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-slurm-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-slurm-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.integrations.slurm.port }}
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

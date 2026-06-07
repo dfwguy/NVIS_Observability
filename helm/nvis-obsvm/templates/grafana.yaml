@@ -1,0 +1,12 @@
+{{- /*
+=============================================================================
+DEPRECATED — replaced by templates/grafana/ subdirectory.
+This file is kept as a placeholder to avoid git conflicts.
+All resources are now defined in:
+  templates/grafana/configmap.yaml
+  templates/grafana/deployment.yaml
+  templates/grafana/service.yaml
+  templates/grafana/pvc.yaml
+  templates/grafana/hpa.yaml
+=============================================================================
+*/ -}}

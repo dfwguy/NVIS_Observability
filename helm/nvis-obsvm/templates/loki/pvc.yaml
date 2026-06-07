@@ -1,0 +1,4 @@
+{{- if .Values.loki.enabled }}
+# PVC is managed by StatefulSet volumeClaimTemplates (data-nvis-loki-0).
+# No standalone PVC needed here.
+{{- end }}

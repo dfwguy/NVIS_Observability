@@ -1,0 +1,44 @@
+[Unit]
+Description=NVIS Platform DGX OS ICMP ping exporter (latency / loss / up)
+Documentation=https://github.com/nvidia-nvis/nvis-platform
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Create this user/group during installation, e.g.:
+#   useradd --system --no-create-home --shell /usr/sbin/nologin nvis
+User=nvis
+Group=nvis
+WorkingDirectory=/opt/nvis-platform
+EnvironmentFile=/etc/nvis-platform/dgx-ping.env
+ExecStart=/usr/bin/python3 -u /opt/nvis-platform/scripts/exporters/dgx-ping/dgx_ping_exporter.py
+Restart=always
+RestartSec=10s
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# /bin/ping needs CAP_NET_RAW. iputils-ping already sets this as a file
+# capability on Debian/Ubuntu, but AmbientCapabilities makes the unit
+# robust on distros that ship a setuid-less or capability-less ping.
+AmbientCapabilities=CAP_NET_RAW
+CapabilityBoundingSet=CAP_NET_RAW
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

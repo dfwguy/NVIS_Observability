@@ -1,0 +1,108 @@
+{{- if .Values.ufmExporter.enabled }}
+---
+# =============================================================================
+# UFM Exporter — InfiniBand fabric metrics via UFM REST API
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-ufm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-ufm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-ufm-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nvis-ufm-exporter
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-exporters
+      containers:
+        - name: ufm-exporter
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.ufmExporter.image.repository "tag" .Values.ufmExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/scripts/ufm_exporter.py"]
+          env:
+            - name: UFM_HOST
+              value: {{ .Values.ufmExporter.env.UFM_HOST | quote }}
+            - name: UFM_USER
+              value: {{ .Values.ufmExporter.env.UFM_USER | quote }}
+            - name: UFM_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-ufm-credentials
+                  key: password
+                  optional: true
+            - name: CLUSTER_NAME
+              value: {{ .Values.clusterName | quote }}
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.ufmExporter.env.SCRAPE_INTERVAL | quote }}
+            - name: PORT
+              value: {{ .Values.ufmExporter.port | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.ufmExporter.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            {{- toYaml .Values.ufmExporter.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.ufmExporter.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: scripts
+          configMap:
+            name: nvis-exporter-scripts
+---
+# =============================================================================
+# UFM Exporter Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-ufm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-ufm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-ufm-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.ufmExporter.port }}
+      targetPort: {{ .Values.ufmExporter.port }}
+      protocol: TCP
+{{- end }}

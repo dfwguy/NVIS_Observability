@@ -1,0 +1,21 @@
+{{- if .Values.loki.enabled }}
+---
+# =============================================================================
+# Loki PVC
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvis-loki-data
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-loki
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.storage.loki.storageClass }}
+  storageClassName: {{ .Values.storage.loki.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.loki.size }}
+{{- end }}

@@ -1,0 +1,57 @@
+# Terraform state and local files
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Secrets and runtime config (never commit these)
+.env
+.nvis-config
+.nvis-creds
+.nvis-nodes
+.nvis-setup-state
+
+# Debug / setup logs
+nvis-setup-debug-*.log
+nvis-setup-report-*.txt
+
+# Long-term storage data volume
+vm-data/
+prometheus-data/
+loki-data/
+grafana-data/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+
+# Node exporter / Go binaries
+node_exporter
+node_exporter-*/
+
+# Temp scripts
+/tmp/
+
+# Site-specific values files (use *.example templates instead)
+obsvm-values.yaml
+beacon-obsvm-values.yaml
+*-obsvm-values.yaml
+
+# LLDPq secrets and live configs (use *.example templates)
+lldpq/lldpq-config/devices.yaml
+lldpq/lldpq-config/topology_config.yaml
+lldpq/lldpq-ssh-keys/

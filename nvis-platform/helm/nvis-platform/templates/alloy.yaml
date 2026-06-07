@@ -1,0 +1,132 @@
+{{- if .Values.alloy.enabled }}
+---
+# =============================================================================
+# Alloy ConfigMap — in-cluster aggregator
+# =============================================================================
+# This Alloy is the in-cluster collector that proxies remote_write traffic to
+# Prometheus and forwards Loki pushes. The per-node Alloy on GPU nodes lives in
+# the nvis-gpu-agents chart (separate).
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-alloy-config
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-alloy
+data:
+  config.alloy: |
+    logging {
+      level  = "warn"
+      format = "logfmt"
+    }
+
+    prometheus.remote_write "default" {
+      endpoint {
+        url = "http://nvis-prometheus.{{ .Release.Namespace }}.svc:{{ .Values.prometheus.port }}/api/v1/write"
+      }
+      external_labels = {
+        cluster     = {{ .Values.cluster.name | quote }},
+        dgx_flavor  = {{ .Values.cluster.dgxFlavor | quote }},
+      }
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://nvis-loki.{{ .Release.Namespace }}.svc:{{ .Values.loki.port }}/loki/api/v1/push"
+      }
+      external_labels = {
+        cluster = {{ .Values.cluster.name | quote }},
+      }
+    }
+---
+# =============================================================================
+# Alloy DaemonSet
+# =============================================================================
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvis-alloy
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-alloy
+spec:
+  selector:
+    matchLabels:
+      app: nvis-alloy
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-alloy
+      annotations:
+        checksum/config: {{ printf "%s|%s" .Values.cluster.name .Values.cluster.dgxFlavor | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: alloy
+          image: {{ include "nvis-platform.image" (dict "root" . "repo" .Values.alloy.image.repository "tag" .Values.alloy.image.tag) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - run
+            - --server.http.listen-addr=0.0.0.0:{{ .Values.alloy.port }}
+            - --storage.path=/var/lib/alloy/data
+            - /etc/alloy/config.alloy
+          ports:
+            - name: http
+              containerPort: {{ .Values.alloy.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+              readOnly: true
+            - name: data
+              mountPath: /var/lib/alloy/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: config
+          configMap:
+            name: nvis-alloy-config
+        - name: data
+          emptyDir: {}
+---
+# =============================================================================
+# Alloy Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-alloy
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-alloy
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-alloy
+  ports:
+    - name: http
+      port: {{ .Values.alloy.port }}
+      targetPort: {{ .Values.alloy.port }}
+      protocol: TCP
+{{- end }}

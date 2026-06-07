@@ -1,0 +1,19 @@
+[Unit]
+Description=NVIS Redfish BMC Prometheus Exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/nvis-monitoring
+EnvironmentFile=/etc/nvis/redfish-exporter.env
+ExecStart=/usr/bin/python3 /opt/nvis-monitoring/redfish_exporter.py
+Restart=always
+RestartSec=15
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=redfish-exporter
+
+[Install]
+WantedBy=multi-user.target

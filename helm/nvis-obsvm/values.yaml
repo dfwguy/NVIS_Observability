@@ -1,0 +1,388 @@
+# =============================================================================
+# nvis-obsvm — values.yaml  (default / development values)
+# =============================================================================
+# Do NOT put secrets here. Secrets go in K8s Secrets (created by setup.sh
+# or via --set grafana.adminPassword=<value> at helm install time).
+#
+# For production overrides, see values-production.yaml.
+# For version bumps, see versions.yaml.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Global
+# ---------------------------------------------------------------------------
+# Image registry prefix for airgapped environments.
+# Empty string = pull from public registries (docker.io, quay.io, etc.)
+# Airgap example: "registry.local:5000"
+# All image refs become: <imageRegistry>/<repository>:<tag>
+imageRegistry: ""
+
+# Kubernetes namespace for all resources
+namespace: nvis-monitoring
+
+# ObsVM host IP — set at install time via --set obsvm.externalIP=$(hostname -I | awk '{print $1}')
+# Used as externalIPs on Prometheus (:9090) and Loki (:3100) services so GPU nodes
+# can reach them directly (kube-proxy binds the port on the host NIC, like Docker ports).
+obsvm:
+  externalIP: ""
+
+# Storage backend: "victoria" (default) or "thanos"
+# Override via: --set storage=thanos  or  ./setup.sh --k8s --storage=thanos
+storage: "victoria"
+
+# Cluster name — injected as external_label on all Prometheus metrics
+# Must match what Grafana dashboard $cluster variable expects
+clusterName: "my-cluster"   # set at install time: --set clusterName=<value> (from installer interview)
+
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  image:
+    repository: prom/prometheus
+    tag: "v2.54.1"
+  port: 9090
+  nodePort: 30090
+  serviceType: NodePort
+  # Short-term retention (long-term handled by VM/Thanos)
+  retention: "15d"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  persistence:
+    size: 50Gi
+    # Empty = use cluster default StorageClass (e.g. local-path on k3s)
+    # Production: set to your provisioner, e.g. "longhorn", "ceph-block"
+    storageClass: ""
+  # HPA — only enable in Thanos mode where multiple shards are safe.
+  # In VictoriaMetrics mode (default) keep disabled: multiple Prometheus replicas
+  # would each independently scrape all targets, producing duplicate series in VM.
+  # VictoriaMetrics deduplicates but it adds CPU/storage overhead unnecessarily.
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+  # Additional scrape jobs to merge into prometheus.yml
+  # Each entry is a raw Prometheus scrape_config block (YAML string)
+  extraScrapeConfigs:
+    - job_name: runai
+      scrape_interval: 30s
+      honor_labels: true
+      metrics_path: /federate
+      params:
+        'match[]':
+          - '{__name__=~"runai.*"}'
+      static_configs:
+        - targets: ["10.63.83.209:31213"]
+      metric_relabel_configs:
+        # RunAI Prometheus uses 'cluster' label (UUID); dashboards expect 'cluster_id'
+        - source_labels: [cluster]
+          target_label: cluster_id
+  # Extra remote_write targets beyond the primary storage backend
+  extraRemoteWrite: []
+
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+grafana:
+  enabled: true
+  image:
+    repository: grafana/grafana
+    tag: "11.1.4"
+  port: 3000
+  # NodePort = reachable from outside cluster at http://NODE_IP:<nodePort>
+  # LoadBalancer = use if cloud/MetalLB is available
+  serviceType: NodePort
+  nodePort: 30300
+  # adminPassword is read from the nvis-grafana-secret K8s Secret.
+  # setup.sh creates that Secret before helm install.
+  # You can also pass it via: helm install --set grafana.adminPasswordOverride=<pw>
+  # If adminPasswordOverride is set, setup.sh creates the secret from it.
+  adminPasswordOverride: ""
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  persistence:
+    size: 10Gi
+    storageClass: ""
+  # HPA — scale Grafana when CPU > 70% (stateless — PVC is shared via ReadWriteMany
+  # or Grafana DB is external; RWO PVC means HPA only useful for swap/recovery)
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 70
+  # Grafana feature toggles
+  disableSanitizeHtml: true
+  # Allow Grafana dashboards/panels to be embedded in <iframe> (NVIS Rack Status
+  # unified dashboard GPU Telemetry column). When false Grafana sends
+  # X-Frame-Options: deny and the iframe stays blank.
+  allowEmbedding: true
+  # Public-facing URL — used for snapshot links, share URLs, OAuth callbacks.
+  # If empty, Grafana defaults to http://localhost:3000/ and snapshot links
+  # generated from the UI will be unusable from other machines.
+  # setup-k8s.sh auto-populates this from $NODE_IP:$nodePort at install time.
+  rootUrl: ""
+  domain: ""
+  # Extra environment variables injected into the Grafana container
+  extraEnv: []
+
+# ---------------------------------------------------------------------------
+# Loki
+# ---------------------------------------------------------------------------
+loki:
+  enabled: true
+  image:
+    repository: grafana/loki
+    tag: "3.1.0"
+  port: 3100
+  nodePort: 30100
+  serviceType: NodePort
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  persistence:
+    size: 50Gi
+    storageClass: ""
+  # Loki ingestion limits
+  ingestionRateMb: 32
+  ingestionBurstSizeMb: 64
+  retentionPeriod: "744h"  # 31 days
+
+# ---------------------------------------------------------------------------
+# VictoriaMetrics (long-term storage backend — storage=victoria)
+# ---------------------------------------------------------------------------
+victoriametrics:
+  enabled: true   # set to false when storage=thanos
+  image:
+    repository: victoriametrics/victoria-metrics
+    tag: "v1.103.0"
+  port: 8428
+  nodePort: 30428
+  serviceType: NodePort
+  # Retention in months (12 = 1 year)
+  retention: "12"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+  persistence:
+    size: 200Gi
+    storageClass: ""
+
+# ---------------------------------------------------------------------------
+# Thanos (long-term storage backend — storage=thanos)
+# All sub-components disabled by default; setup.sh enables them via --set
+# ---------------------------------------------------------------------------
+thanos:
+  enabled: false  # true when storage=thanos
+  image:
+    repository: quay.io/thanos/thanos
+    tag: "v0.36.1"
+
+  # Thanos Receive — accepts Prometheus remote_write; replaces VictoriaMetrics
+  receive:
+    enabled: false
+    port: 19291         # remote write port
+    grpcPort: 10901
+    httpPort: 10902
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    persistence:
+      size: 200Gi
+      storageClass: ""
+    replicationFactor: 1
+
+  # Thanos Querier — unified query layer across all stores
+  querier:
+    enabled: false
+    port: 9090
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  # Thanos Store Gateway — serves historical data from object storage
+  storeGateway:
+    enabled: false
+    grpcPort: 10901
+    httpPort: 10902
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistence:
+      size: 10Gi   # index cache only; data lives in object store
+      storageClass: ""
+
+  # Thanos Compactor — downsampling and retention enforcement
+  compactor:
+    enabled: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    persistence:
+      size: 50Gi
+      storageClass: ""
+    retentionResolutionRaw: "30d"
+    retentionResolution5m: "90d"
+    retentionResolution1h: "365d"
+
+  # Object storage config for Store Gateway and Compactor
+  # For a single-site demo this can be left empty (local disk mode)
+  objectStorage:
+    # "filesystem" for local-disk (no S3/GCS needed), "s3" or "gcs" for cloud
+    type: "filesystem"
+    # S3/MinIO example (only needed when type=s3):
+    s3:
+      bucket: ""
+      endpoint: ""
+      accessKey: ""         # Use K8s Secret in production
+      secretKey: ""         # Use K8s Secret in production
+      insecure: true
+
+# ---------------------------------------------------------------------------
+# BCM Exporter
+# ---------------------------------------------------------------------------
+bcmExporter:
+  enabled: true
+  image:
+    repository: python
+    tag: "3.11-slim"
+  port: 9401
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    BCM_HOST: ""
+    BCM_USER: "root"
+    CLUSTER_NAME: ""   # inherited from clusterName at top
+    SCRAPE_INTERVAL: "60"
+  # SSH key for BCM access — name of K8s Secret with key "id_ed25519"
+  sshSecretName: "nvis-bcm-ssh-key"
+
+# ---------------------------------------------------------------------------
+# Slurm Job Exporter
+# ---------------------------------------------------------------------------
+slurmExporter:
+  enabled: true
+  image:
+    repository: python
+    tag: "3.11-slim"
+  port: 9402
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    BCM_HOST: ""
+    BCM_USER: "root"
+    CLUSTER_NAME: ""   # inherited from clusterName at top
+    SLURM_PORT: "9402"
+    SCRAPE_INTERVAL: "30"
+    SACCT_HOURS: "72"
+  sshSecretName: "nvis-bcm-ssh-key"
+
+# ---------------------------------------------------------------------------
+# UFM Exporter — InfiniBand fabric metrics via UFM REST API
+# ---------------------------------------------------------------------------
+ufmExporter:
+  enabled: true
+  image:
+    repository: python
+    tag: "3.11-slim"
+  port: 9403
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    UFM_HOST: "worker20.air-inside.nvidia.com:33735"
+    UFM_USER: "admin"
+    CLUSTER_NAME: ""   # inherited from clusterName at top
+    SCRAPE_INTERVAL: "30"
+
+# ---------------------------------------------------------------------------
+# S4K Generator (Stress-4k synthetic metric generator)
+# ---------------------------------------------------------------------------
+s4kGenerator:
+  enabled: true
+  image:
+    repository: python
+    tag: "3.11-slim"
+  port: 9500
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  env:
+    PORT: "9500"
+
+# ---------------------------------------------------------------------------
+# NetworkPolicy
+# ---------------------------------------------------------------------------
+networkPolicy:
+  # Set to true to enforce strict pod-to-pod isolation
+  enabled: true
+
+# ---------------------------------------------------------------------------
+# RBAC
+# ---------------------------------------------------------------------------
+rbac:
+  # Creates a minimal ServiceAccount for each component
+  create: true
+
+# ---------------------------------------------------------------------------
+# Security Context defaults (applied to all pods unless overridden)
+# ---------------------------------------------------------------------------
+securityContext:
+  runAsNonRoot: true
+  # nobody (65534) is the default; individual pods override where needed
+  runAsUser: 65534
+  runAsGroup: 65534
+  readOnlyRootFilesystem: false   # some containers need /tmp writes; set per-container

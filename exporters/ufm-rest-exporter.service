@@ -1,0 +1,20 @@
+[Unit]
+Description=UFM Enterprise REST API Prometheus Exporter
+Documentation=https://github.com/nvidia/nvis-observability
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hlakshminara
+EnvironmentFile=-/home/hlakshminara/nvis-observability/.nvis-config
+EnvironmentFile=-/home/hlakshminara/nvis-observability/.nvis-creds
+ExecStart=/usr/bin/python3 /home/hlakshminara/nvis-observability/exporters/ufm_rest_exporter.py --port 9404
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ufm-rest-exporter
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,69 @@
+{{- if .Values.integrations.cgroupExporter.enabled }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvis-cgroup-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-cgroup-exporter
+spec:
+  selector:
+    matchLabels:
+      app: nvis-cgroup-exporter
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-cgroup-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.integrations.cgroupExporter.port | quote }}
+    spec:
+      hostNetwork: true
+      hostPID: true
+      {{- with .Values.integrations.cgroupExporter.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.integrations.cgroupExporter.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: cgroup-exporter
+          image: "{{ .Values.integrations.cgroupExporter.image }}:{{ .Values.integrations.cgroupExporter.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--web.listen-address=:{{ .Values.integrations.cgroupExporter.port }}"
+            {{- range .Values.integrations.cgroupExporter.paths }}
+            - "--config.paths={{ . }}"
+            {{- end }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.integrations.cgroupExporter.port }}
+              hostPort: {{ .Values.integrations.cgroupExporter.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: cgroup
+              mountPath: /sys/fs/cgroup
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: cgroup
+          hostPath:
+            path: /sys/fs/cgroup
+            type: Directory
+{{- end }}

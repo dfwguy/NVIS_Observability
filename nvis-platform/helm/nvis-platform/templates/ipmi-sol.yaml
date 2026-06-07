@@ -1,0 +1,63 @@
+# helm-conditional: skip yaml validation when block present
+{{- if .Values.integrations.ipmiSol.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-ipmi-sol
+  labels:
+    app.kubernetes.io/name: nvis-ipmi-sol
+    app.kubernetes.io/component: ipmi-sol-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-ipmi-sol
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvis-ipmi-sol
+        app.kubernetes.io/component: ipmi-sol-exporter
+        app.kubernetes.io/part-of: nvis-platform
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: ipmi-sol
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/ipmi-sol:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          env:
+            - name: CLUSTER_NAME
+              value: "{{ .Values.cluster.name }}"
+            - name: BMC_CREDS_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-bmc-credentials-json
+                  key: creds.json
+            - name: LOKI_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nvis-bmc-config
+                  key: lokiUrl
+            - name: LOG_DIR
+              value: "/var/log/nvis-platform"
+            - name: DEACTIVATE_FIRST
+              value: "{{ .Values.integrations.ipmiSol.deactivateFirst | default "true" }}"
+            - name: RETRY_BACKOFF
+              value: "{{ .Values.integrations.ipmiSol.retryBackoff | default 30 }}"
+            - name: MAX_RETRY_BACKOFF
+              value: "{{ .Values.integrations.ipmiSol.maxRetryBackoff | default 300 }}"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: logs
+              mountPath: /var/log/nvis-platform
+      volumes:
+        - name: logs
+          emptyDir: {}
+{{- end }}

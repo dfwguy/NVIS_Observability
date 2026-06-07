@@ -1,0 +1,137 @@
+# helm-conditional: skip yaml validation when block present
+{{- if .Values.integrations.powershelf.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-powershelf-config
+  labels:
+    app.kubernetes.io/name: nvis-powershelf-exporter
+    app.kubernetes.io/component: powershelf-exporter
+    app.kubernetes.io/part-of: nvis-platform
+data:
+  hosts: {{ .Values.integrations.powershelf.hosts | default "" | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-powershelf-exporter
+  labels:
+    app.kubernetes.io/name: nvis-powershelf-exporter
+    app.kubernetes.io/component: powershelf-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-powershelf-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvis-powershelf-exporter
+        app.kubernetes.io/component: powershelf-exporter
+        app.kubernetes.io/part-of: nvis-platform
+    spec:
+      restartPolicy: Always
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: powershelf-exporter
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/powershelf-exporter:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.integrations.powershelf.port | default 9103 }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "{{ .Values.integrations.powershelf.port | default 9103 }}"
+            - name: CLUSTER_NAME
+              value: "{{ .Values.cluster.name }}"
+            - name: POWERSHELF_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: nvis-powershelf-config
+                  key: hosts
+            - name: POWERSHELF_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrations.powershelf.credentialsSecret | default "nvis-powershelf-credentials" }}
+                  key: username
+            - name: POWERSHELF_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrations.powershelf.credentialsSecret | default "nvis-powershelf-credentials" }}
+                  key: password
+            - name: SCRAPE_INTERVAL
+              value: "{{ .Values.integrations.powershelf.scrapeInterval | default 30 }}"
+            - name: VERIFY_SSL
+              value: "{{ .Values.integrations.powershelf.verifySSL | default "false" }}"
+            - name: POWERSHELF_TIMEOUT
+              value: "{{ .Values.integrations.powershelf.timeout | default 10 }}"
+            - name: POWERSHELF_MAX_WORKERS
+              value: "{{ .Values.integrations.powershelf.maxWorkers | default 16 }}"
+            - name: POWERSHELF_SENSOR_WORKERS
+              value: "{{ .Values.integrations.powershelf.sensorWorkers | default 8 }}"
+            - name: POWERSHELF_PSU_FW_EXPECTED
+              value: "{{ .Values.integrations.powershelf.psuFwExpected | default "0xf1 / 0xf1" }}"
+          readinessProbe:
+            tcpSocket:
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-powershelf-exporter
+  labels:
+    app.kubernetes.io/name: nvis-powershelf-exporter
+    app.kubernetes.io/component: powershelf-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nvis-powershelf-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.integrations.powershelf.port | default 9103 }}
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvis-powershelf-exporter
+  labels:
+    app.kubernetes.io/name: nvis-powershelf-exporter
+    app.kubernetes.io/component: powershelf-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-powershelf-exporter
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.integrations.powershelf.scrapeInterval | default 30 }}s
+      scrapeTimeout: 15s
+      path: /metrics
+{{- end }}

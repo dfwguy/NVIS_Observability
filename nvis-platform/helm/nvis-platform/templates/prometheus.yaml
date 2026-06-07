@@ -1,0 +1,350 @@
+{{- if .Values.prometheus.enabled }}
+---
+# =============================================================================
+# Prometheus ConfigMap — prometheus.yml
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-prometheus-config
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      external_labels:
+        cluster: {{ .Values.cluster.name | quote }}
+        dgx_flavor: {{ .Values.cluster.dgxFlavor | quote }}
+        replica: prometheus-0
+
+    scrape_configs:
+      - job_name: prometheus
+        static_configs:
+          - targets: ["localhost:{{ .Values.prometheus.port }}"]
+
+      {{- if .Values.integrations.bcm.enabled }}
+      - job_name: bcm-exporter
+        scrape_interval: 60s
+        scrape_timeout: 30s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-bcm-exporter:{{ .Values.integrations.bcm.port }}"]
+      {{- end }}
+
+      {{- if .Values.integrations.slurm.enabled }}
+      - job_name: slurm-job-exporter
+        scrape_interval: 30s
+        scrape_timeout: 25s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-slurm-exporter:{{ .Values.integrations.slurm.port }}"]
+      {{- end }}
+
+      {{- if .Values.integrations.cgroupExporter.enabled }}
+      - job_name: cgroup-exporter
+        scrape_interval: 30s
+        honor_labels: true
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [ {{ .Release.Namespace | quote }} ]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: nvis-cgroup-exporter
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: instance
+          - source_labels: [__address__]
+            regex: '(.+):\d+'
+            replacement: '${1}:{{ .Values.integrations.cgroupExporter.port }}'
+            target_label: __address__
+      {{- end }}
+
+      {{- if .Values.integrations.ufm.enabled }}
+      - job_name: ufm
+        scrape_interval: {{ .Values.integrations.ufm.scrapeInterval }}s
+        scrape_timeout: 25s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-ufm-exporter:{{ .Values.integrations.ufm.port }}"]
+      {{- end }}
+
+      {{- if .Values.integrations.netq.enabled }}
+      - job_name: netq
+        scrape_interval: {{ .Values.integrations.netq.scrapeInterval }}s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-netq-exporter:{{ .Values.integrations.netq.port }}"]
+      {{- end }}
+
+      {{- if .Values.integrations.redfish.enabled }}
+      - job_name: redfish-main
+        scrape_interval: {{ .Values.integrations.redfish.scrapeInterval }}s
+        scrape_timeout: 30s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-redfish-main:9102"]
+      {{- end }}
+
+      {{- if .Values.integrations.redfishNm.enabled }}
+      - job_name: redfish-nm
+        scrape_interval: 15s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-redfish-nm:9104"]
+      {{- end }}
+
+      {{- if .Values.integrations.redfishFast.enabled }}
+      - job_name: redfish-fast
+        scrape_interval: 30s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-redfish-fast:9105"]
+      {{- end }}
+
+      {{- if .Values.integrations.redfishSensors.enabled }}
+      - job_name: redfish-sensors
+        scrape_interval: 80s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-redfish-sensors:9108"]
+      {{- end }}
+
+      {{- if .Values.integrations.powershelf.enabled }}
+      - job_name: powershelf
+        scrape_interval: {{ .Values.integrations.powershelf.scrapeInterval | default 30 }}s
+        scrape_timeout: 25s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-powershelf-exporter:{{ .Values.integrations.powershelf.port | default 9103 }}"]
+      {{- end }}
+
+      {{- if .Values.integrations.nmc.enabled }}
+      - job_name: nmc-bcm-exporter
+        scheme: {{ .Values.integrations.nmc.scheme | quote }}
+        metrics_path: {{ .Values.integrations.nmc.path | quote }}
+        scrape_interval: {{ .Values.integrations.nmc.scrapeInterval }}s
+        scrape_timeout: {{ .Values.integrations.nmc.scrapeTimeout }}s
+        honor_labels: true
+        tls_config:
+          insecure_skip_verify: {{ eq .Values.integrations.nmc.verifySSL "false" }}
+        basic_auth:
+          username_file: /etc/nmc-credentials/username
+          password_file: /etc/nmc-credentials/password
+        static_configs:
+          - targets: ["{{ .Values.integrations.nmc.host }}:{{ .Values.integrations.nmc.port }}"]
+            labels:
+              source: nmc
+      {{- if .Values.integrations.nmc.dcgmFederation.enabled }}
+      - job_name: nmc-dcgm
+        scrape_interval: 30s
+        honor_labels: true
+        static_configs:
+          - targets:
+            {{- range .Values.integrations.nmc.dcgmFederation.targets }}
+              - {{ . | quote }}
+            {{- end }}
+            labels:
+              source: nmc-dcgm
+      {{- end }}
+      {{- end }}
+
+      {{- if .Values.integrations.runai.enabled }}
+      - job_name: runai
+        honor_labels: true
+        metrics_path: /federate
+        params:
+          match[]:
+          - '{__name__=~"runai.*"}'
+          - '{__name__=~"DCGM_.*"}'
+        scrape_interval: 30s
+        static_configs:
+        - targets:
+          - {{ .Values.integrations.runai.promTarget | quote }}
+        metric_relabel_configs:
+        - source_labels: [cluster]
+          target_label: cluster_id
+        - target_label: cluster
+          replacement: {{ .Values.cluster.name | quote }}
+      {{- end }}
+
+      {{- if .Values.integrations.dgxPing.enabled }}
+      - job_name: dgx-ping
+        scrape_interval: {{ .Values.integrations.dgxPing.scrapeInterval | default 30 }}s
+        scrape_timeout: 15s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-dgx-ping:{{ .Values.integrations.dgxPing.port | default 9116 }}"]
+      {{- end }}
+
+      {{- if .Values.prometheus.extraScrapeConfigs }}
+      {{- toYaml .Values.prometheus.extraScrapeConfigs | nindent 6 }}
+      {{- end }}
+---
+# =============================================================================
+# Prometheus PVC
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvis-prometheus-data
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-prometheus
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.storage.prometheus.storageClass }}
+  storageClassName: {{ .Values.storage.prometheus.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.storage.prometheus.size }}
+---
+# =============================================================================
+# Prometheus Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-prometheus
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-prometheus
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nvis-prometheus
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-prometheus
+      annotations:
+        checksum/config: {{ .Values.cluster.name | sha256sum }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 65534:65534 /prometheus || true"]
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /prometheus
+      containers:
+        - name: prometheus
+          image: {{ include "nvis-platform.image" (dict "root" . "repo" .Values.prometheus.image.repository "tag" .Values.prometheus.image.tag) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time={{ .Values.prometheus.retention }}
+            - --web.listen-address=:{{ .Values.prometheus.port }}
+            - --web.enable-lifecycle
+            - --web.enable-remote-write-receiver
+            - --web.enable-admin-api
+          ports:
+            - name: http
+              containerPort: {{ .Values.prometheus.port }}
+              hostPort: {{ .Values.prometheus.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+              readOnly: true
+            - name: data
+              mountPath: /prometheus
+            {{- if .Values.integrations.nmc.enabled }}
+            - name: nmc-credentials
+              mountPath: /etc/nmc-credentials
+              readOnly: true
+            {{- end }}
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          startupProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.prometheus.port }}
+            failureThreshold: 30
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: {{ .Values.prometheus.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: config
+          configMap:
+            name: nvis-prometheus-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: nvis-prometheus-data
+        {{- if .Values.integrations.nmc.enabled }}
+        - name: nmc-credentials
+          secret:
+            secretName: {{ .Values.integrations.nmc.basicAuthSecret }}
+            defaultMode: 0400
+        {{- end }}
+---
+# =============================================================================
+# Prometheus Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-prometheus
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-prometheus
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.port }}
+      targetPort: {{ .Values.prometheus.port }}
+      protocol: TCP
+{{- end }}

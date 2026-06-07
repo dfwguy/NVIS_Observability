@@ -1,0 +1,121 @@
+{{- if and .Values.thanos.enabled .Values.thanos.storeGateway.enabled (eq (include "nvis.storage" .) "thanos") }}
+---
+# =============================================================================
+# Thanos Store Gateway — serves historical blocks from object storage
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nvis-thanos-store-gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-store-gateway
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-thanos-store-gateway
+  serviceName: nvis-thanos-store-gateway-headless
+  template:
+    metadata:
+      labels:
+        app: nvis-thanos-store-gateway
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-thanos
+      containers:
+        - name: thanos-store-gateway
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.thanos.image.repository "tag" .Values.thanos.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - store
+            - --http-address=0.0.0.0:{{ .Values.thanos.storeGateway.httpPort }}
+            - --grpc-address=0.0.0.0:{{ .Values.thanos.storeGateway.grpcPort }}
+            - --data-dir=/data
+            {{- if eq .Values.thanos.objectStorage.type "filesystem" }}
+            # Filesystem mode — data served from local PVC (no S3 needed)
+            - --store.grpc.series-max-concurrency=20
+            {{- else if eq .Values.thanos.objectStorage.type "s3" }}
+            - --objstore.config-file=/etc/thanos/objstore.yaml
+            {{- end }}
+          ports:
+            - name: grpc
+              containerPort: {{ .Values.thanos.storeGateway.grpcPort }}
+            - name: http
+              containerPort: {{ .Values.thanos.storeGateway.httpPort }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            {{- if eq .Values.thanos.objectStorage.type "s3" }}
+            - name: objstore-config
+              mountPath: /etc/thanos
+              readOnly: true
+            {{- end }}
+          resources:
+            {{- toYaml .Values.thanos.storeGateway.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: {{ .Values.thanos.storeGateway.httpPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: {{ .Values.thanos.storeGateway.httpPort }}
+            initialDelaySeconds: 60
+            periodSeconds: 15
+      {{- if eq .Values.thanos.objectStorage.type "s3" }}
+      volumes:
+        - name: objstore-config
+          secret:
+            secretName: nvis-thanos-objstore-config
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.thanos.storeGateway.persistence.storageClass }}
+        storageClassName: {{ .Values.thanos.storeGateway.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.thanos.storeGateway.persistence.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-thanos-store-gateway
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-thanos-store-gateway
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nvis-thanos-store-gateway
+  ports:
+    - name: grpc
+      port: {{ .Values.thanos.storeGateway.grpcPort }}
+      targetPort: {{ .Values.thanos.storeGateway.grpcPort }}
+    - name: http
+      port: {{ .Values.thanos.storeGateway.httpPort }}
+      targetPort: {{ .Values.thanos.storeGateway.httpPort }}
+{{- end }}

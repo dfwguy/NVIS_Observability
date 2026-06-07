@@ -1,0 +1,43 @@
+{{- if .Values.loki.enabled }}
+---
+# =============================================================================
+# Loki Service
+# =============================================================================
+# ExternalIPs + NodePort: kube-proxy binds port 3100 on the ObsVM host NIC.
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-obsvm-loki
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-loki
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-loki
+  ports:
+    - name: http
+      port: {{ .Values.loki.port }}
+      targetPort: {{ .Values.loki.port }}
+      protocol: TCP
+---
+# Headless service for StatefulSet DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-loki-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-loki
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nvis-loki
+  ports:
+    - name: http
+      port: {{ .Values.loki.port }}
+      targetPort: {{ .Values.loki.port }}
+{{- end }}

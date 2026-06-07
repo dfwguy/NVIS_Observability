@@ -1,0 +1,68 @@
+# helm-conditional: skip yaml validation when block present
+{{- if .Values.integrations.ipmiSel.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-ipmi-sel
+  labels:
+    app.kubernetes.io/name: nvis-ipmi-sel
+    app.kubernetes.io/component: ipmi-sel-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-ipmi-sel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvis-ipmi-sel
+        app.kubernetes.io/component: ipmi-sel-exporter
+        app.kubernetes.io/part-of: nvis-platform
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: ipmi-sel
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/ipmi-sel:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          env:
+            - name: CLUSTER_NAME
+              value: "{{ .Values.cluster.name }}"
+            - name: BMC_CREDS_JSON
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-bmc-credentials-json
+                  key: creds.json
+            - name: LOKI_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: nvis-bmc-config
+                  key: lokiUrl
+            - name: POLL_INTERVAL
+              value: "{{ .Values.integrations.ipmiSel.pollInterval | default 300 }}"
+            - name: IPMITOOL_TIMEOUT
+              # Must be >=240s for systems with large SELs.
+              value: "{{ .Values.integrations.ipmiSel.ipmitoolTimeout | default 240 }}"
+            - name: STATE_DIR
+              value: "/var/lib/nvis-platform"
+            - name: LOG_DIR
+              value: "/var/log/nvis-platform"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: state
+              mountPath: /var/lib/nvis-platform
+            - name: logs
+              mountPath: /var/log/nvis-platform
+      volumes:
+        - name: state
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+{{- end }}

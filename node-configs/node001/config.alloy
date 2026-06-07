@@ -1,0 +1,68 @@
+// ── Logs ──────────────────────────────────────────────────────────────────
+local.file_match "varlog" {
+  path_targets = [
+    {__path__ = "/var/log/syslog",            job = "syslog",        log_type = "syslog"},
+    {__path__ = "/var/log/kern.log",           job = "kernel",        log_type = "kernel"},
+    {__path__ = "/var/log/auth.log",           job = "auth",          log_type = "auth"},
+    {__path__ = "/var/log/nv-hostengine.log",  job = "nv-hostengine", log_type = "dcgm"},
+    {__path__ = "/var/log/slurmd",             job = "slurmd",        log_type = "slurm"},
+  ]
+}
+
+loki.source.file "logfiles" {
+  targets    = local.file_match.varlog.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+loki.write "obsvm" {
+  endpoint {
+    url = "http://<OBSVM_IP>:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    cluster = sys.env("NVIS_CLUSTER"),
+    node    = sys.env("HOSTNAME"),
+  }
+}
+
+// ── Metrics: DCGM exporter ────────────────────────────────────────────────
+prometheus.scrape "dcgm" {
+  targets         = [{"__address__" = "localhost:9400"}]
+  forward_to      = [prometheus.relabel.add_labels.receiver]
+  scrape_interval = "15s"
+  job_name        = "dcgm-exporter"
+}
+
+// ── Metrics: node_exporter ────────────────────────────────────────────────
+prometheus.scrape "node" {
+  targets         = [{"__address__" = "localhost:9100"}]
+  forward_to      = [prometheus.relabel.add_labels.receiver]
+  scrape_interval = "15s"
+  job_name        = "node-exporter"
+}
+
+// ── Metrics: cAdvisor (cgroup/job metrics) ────────────────────────────────
+prometheus.scrape "cadvisor" {
+  targets         = [{"__address__" = "localhost:9306"}]
+  forward_to      = [prometheus.relabel.add_labels.receiver]
+  scrape_interval = "15s"
+}
+
+// ── Relabel: add node + cluster labels ───────────────────────────────────
+prometheus.relabel "add_labels" {
+  forward_to = [prometheus.remote_write.obsvm.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = sys.env("HOSTNAME")
+  }
+  rule {
+    target_label = "cluster"
+    replacement  = sys.env("NVIS_CLUSTER")
+  }
+}
+
+// ── Remote write to Prometheus on ObsVM ──────────────────────────────────
+prometheus.remote_write "obsvm" {
+  endpoint {
+    url = "http://<OBSVM_IP>:9090/api/v1/write"
+  }
+}

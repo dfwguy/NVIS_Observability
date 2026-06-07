@@ -1,0 +1,114 @@
+// =============================================================================
+// NVIS — GPU Node Alloy Config (systemd service edition)
+// Installed by nvis-setup.sh as /etc/alloy/config.alloy on each GPU node.
+// Placeholders OBSVM_IP, CLUSTER_NAME, NODE_HOSTNAME substituted at deploy time.
+//
+// This config:
+//   - Forwards /var/log/syslog to Loki (catches NVRM XID errors)
+//   - Forwards /var/log/kern.log to Loki
+//   - Scrapes node_exporter :9100 → Prometheus remote_write
+//   - Forwards systemd journal to Loki
+// =============================================================================
+
+logging {
+  level = "info"
+}
+
+// ---------------------------------------------------------------------------
+// Loki write
+// ---------------------------------------------------------------------------
+loki.write "obsvm" {
+  endpoint {
+    url = "http://OBSVM_IP:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    cluster = "CLUSTER_NAME",
+    node    = "NODE_HOSTNAME",
+  }
+}
+
+// ---------------------------------------------------------------------------
+// /var/log/syslog — catches NVRM XID errors, GPU driver messages
+// ---------------------------------------------------------------------------
+local.file_match "syslog" {
+  path_targets = [
+    {__path__ = "/var/log/syslog", job = "syslog"},
+  ]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// /var/log/kern.log — kernel messages including GPU driver faults
+// ---------------------------------------------------------------------------
+local.file_match "kernlog" {
+  path_targets = [
+    {__path__ = "/var/log/kern.log", job = "kernel"},
+  ]
+}
+
+loki.source.file "kernlog" {
+  targets    = local.file_match.kernlog.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// systemd journal — all GPU node services
+// ---------------------------------------------------------------------------
+loki.source.journal "journal" {
+  forward_to    = [loki.write.obsvm.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  labels = {
+    job = "journal",
+  }
+}
+
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Prometheus remote write
+// ---------------------------------------------------------------------------
+prometheus.remote_write "obsvm" {
+  endpoint {
+    url = "http://OBSVM_IP:9090/api/v1/write"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// node_exporter scrape → remote_write to ObsVM
+// ---------------------------------------------------------------------------
+prometheus.scrape "node_exporter" {
+  targets         = [{"__address__" = "localhost:9100"}]
+  scrape_interval = "15s"
+  job_name        = "node-exporter"
+  forward_to      = [prometheus.relabel.node_labels.receiver]
+}
+
+prometheus.relabel "node_labels" {
+  forward_to = [prometheus.remote_write.obsvm.receiver]
+  rule {
+    target_label = "instance"
+    replacement  = "NODE_HOSTNAME"
+  }
+  rule {
+    target_label = "cluster"
+    replacement  = "CLUSTER_NAME"
+  }
+  rule {
+    target_label = "node"
+    replacement  = "NODE_HOSTNAME"
+  }
+}

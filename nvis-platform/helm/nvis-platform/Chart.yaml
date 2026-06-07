@@ -1,0 +1,8 @@
+apiVersion: v2
+name: nvis-platform
+description: Unified observability + deployment-hardware-validation stack for NVIDIA DGX clusters
+type: application
+version: 2.1.1
+appVersion: "2.1.1"
+icon: ""
+maintainers: []

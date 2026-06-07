@@ -1,0 +1,158 @@
+// =============================================================================
+// NVIS — BCM Head Node Alloy Config
+// Installed by nvis-setup.sh as /etc/alloy/config.alloy on BCM head node.
+// Placeholders OBSVM_IP and CLUSTER_NAME are substituted at deploy time.
+// =============================================================================
+
+logging {
+  level = "info"
+}
+
+// ---------------------------------------------------------------------------
+// Loki write endpoint
+// ---------------------------------------------------------------------------
+loki.write "obsvm" {
+  endpoint {
+    url = "http://OBSVM_IP:3100/loki/api/v1/push"
+  }
+  external_labels = {
+    cluster = "CLUSTER_NAME",
+    node    = env("HOSTNAME"),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 1. /var/log/syslog
+// ---------------------------------------------------------------------------
+local.file_match "syslog" {
+  path_targets = [
+    {__path__ = "/var/log/syslog", job = "syslog"},
+  ]
+}
+
+loki.source.file "syslog" {
+  targets    = local.file_match.syslog.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 2. /var/log/kern.log
+// ---------------------------------------------------------------------------
+local.file_match "kernlog" {
+  path_targets = [
+    {__path__ = "/var/log/kern.log", job = "kernel"},
+  ]
+}
+
+loki.source.file "kernlog" {
+  targets    = local.file_match.kernlog.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 3. Slurm logs  (/var/log/slurm/*.log — skipped gracefully if absent)
+// ---------------------------------------------------------------------------
+local.file_match "slurm" {
+  path_targets = [
+    {__path__ = "/var/log/slurm/*.log", job = "slurm"},
+  ]
+}
+
+loki.source.file "slurm" {
+  targets    = local.file_match.slurm.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 4. systemd journal (all units)
+// ---------------------------------------------------------------------------
+loki.source.journal "journal" {
+  forward_to    = [loki.write.obsvm.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  labels = {
+    job = "journal",
+  }
+}
+
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+  rule {
+    source_labels = ["__journal__hostname"]
+    target_label  = "hostname"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5. Run.AI logs — journal unit filter for runai-* services
+// ---------------------------------------------------------------------------
+loki.source.journal "runai" {
+  forward_to    = [loki.write.obsvm.receiver]
+  relabel_rules = loki.relabel.runai.rules
+  labels = {
+    job = "runai",
+  }
+  matches = "_SYSTEMD_UNIT=runai-cluster-agent.service"
+}
+
+loki.relabel "runai" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 6. Docker container logs (for BCM-hosted containers: nvis-alloy, nvis-cadvisor, etc.)
+// ---------------------------------------------------------------------------
+local.file_match "docker" {
+  path_targets = [
+    {__path__ = "/var/lib/docker/containers/*/*.log", job = "docker"},
+  ]
+}
+
+loki.source.file "docker" {
+  targets    = local.file_match.docker.targets
+  forward_to = [loki.write.obsvm.receiver]
+}
+
+// ---------------------------------------------------------------------------
+// 7. Prometheus remote write (Alloy self-metrics)
+// ---------------------------------------------------------------------------
+prometheus.remote_write "obsvm" {
+  endpoint {
+    url = "http://OBSVM_IP:9090/api/v1/write"
+  }
+}
+
+prometheus.exporter.self "alloy_bcm" {}
+
+prometheus.scrape "alloy_self" {
+  targets         = prometheus.exporter.self.alloy_bcm.targets
+  scrape_interval = "30s"
+  forward_to      = [prometheus.relabel.alloy_self.receiver]
+}
+
+prometheus.relabel "alloy_self" {
+  forward_to = [prometheus.remote_write.obsvm.receiver]
+  rule {
+    target_label = "job"
+    replacement  = "alloy-bcm"
+  }
+  rule {
+    target_label = "instance"
+    replacement  = env("HOSTNAME")
+  }
+  rule {
+    target_label = "cluster"
+    replacement  = "CLUSTER_NAME"
+  }
+}

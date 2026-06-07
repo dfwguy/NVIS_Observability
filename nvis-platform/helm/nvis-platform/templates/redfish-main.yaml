@@ -1,0 +1,123 @@
+# helm-conditional: skip yaml validation when block present
+{{- if .Values.integrations.redfish.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-redfish-main
+  labels:
+    app.kubernetes.io/name: nvis-redfish-main
+    app.kubernetes.io/component: redfish-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-redfish-main
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nvis-redfish-main
+        app.kubernetes.io/component: redfish-exporter
+        app.kubernetes.io/part-of: nvis-platform
+    spec:
+      restartPolicy: Always
+      containers:
+        - name: redfish-main
+          # Placeholder image -- override .Values.image.registry or build the image yourself.
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/redfish-main:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: metrics
+              containerPort: 9102
+              protocol: TCP
+          env:
+            - name: PORT
+              value: "9102"
+            - name: CLUSTER_NAME
+              value: "{{ .Values.cluster.name }}"
+            - name: BMC_USER
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-bmc-credentials
+                  key: user
+            - name: BMC_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-bmc-credentials
+                  key: pass
+            - name: BMC_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: nvis-bmc-config
+                  key: hosts
+            - name: SCRAPE_INTERVAL
+              value: "{{ .Values.integrations.redfish.scrapeInterval | default 60 }}"
+            - name: BMC_TIMEOUT
+              value: "{{ .Values.integrations.redfish.bmcTimeout | default 10 }}"
+            - name: VERIFY_SSL
+              value: "{{ .Values.integrations.redfish.verifySSL | default "false" }}"
+            - name: FAST_CHASSIS_ID
+              value: "{{ .Values.integrations.redfish.fastChassisId | default "" }}"
+            - name: LOG_DIR
+              value: "/var/log/nvis-platform"
+            {{- if .Values.integrations.redfish.lokiUrl }}
+            - name: LOKI_URL
+              value: "{{ .Values.integrations.redfish.lokiUrl }}"
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: logs
+              mountPath: /var/log/nvis-platform
+      volumes:
+        - name: logs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-redfish-main
+  labels:
+    app.kubernetes.io/name: nvis-redfish-main
+    app.kubernetes.io/component: redfish-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nvis-redfish-main
+  ports:
+    - name: metrics
+      port: 9102
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: nvis-redfish-main
+  labels:
+    app.kubernetes.io/name: nvis-redfish-main
+    app.kubernetes.io/component: redfish-exporter
+    app.kubernetes.io/part-of: nvis-platform
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nvis-redfish-main
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.integrations.redfish.scrapeInterval | default 60 }}s
+      scrapeTimeout: 30s
+      path: /metrics
+{{- end }}

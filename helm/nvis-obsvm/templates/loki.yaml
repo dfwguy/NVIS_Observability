@@ -1,0 +1,11 @@
+{{- /*
+=============================================================================
+DEPRECATED — replaced by templates/loki/ subdirectory.
+This file is kept as a placeholder to avoid git conflicts.
+All resources are now defined in:
+  templates/loki/configmap.yaml
+  templates/loki/deployment.yaml
+  templates/loki/service.yaml
+  templates/loki/pvc.yaml
+=============================================================================
+*/ -}}

@@ -1,0 +1,17 @@
+{{- if .Values.dashboards.hwValidation.enabled }}
+{{- range $path, $_ := .Files.Glob "dashboards/hw/*.json" }}
+{{- $name := base $path | trimSuffix ".json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-dash-hw-{{ $name }}
+  labels:
+    {{- include "nvis-platform.labels" $ | nindent 4 }}
+    grafana_dashboard: "1"
+    nvis.dashboard.pack: hw-validation
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

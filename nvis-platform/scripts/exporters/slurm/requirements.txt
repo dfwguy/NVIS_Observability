@@ -1,0 +1,2 @@
+# slurm_job_exporter uses only Python stdlib (http.server, subprocess, threading).
+# Listed here for build-pipeline parity with sibling exporters.

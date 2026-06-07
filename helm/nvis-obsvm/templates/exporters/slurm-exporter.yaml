@@ -1,0 +1,139 @@
+{{- if .Values.slurmExporter.enabled }}
+{{- /*
+  NOTE: The ConfigMap nvis-slurm-exporter-scripts is NOT defined in this template.
+  setup-k8s.sh creates it before helm install via kubectl create configmap.
+*/ -}}
+---
+# =============================================================================
+# Slurm Job Exporter Deployment
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-slurm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-slurm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-slurm-exporter
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: nvis-slurm-exporter
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+      annotations:
+        checksum/scripts: {{ .Values.slurmExporter.image.tag | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-exporters
+      initContainers:
+        - name: install-ssh
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.slurmExporter.image.repository "tag" .Values.slurmExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - "apt-get update -qq && apt-get install -y -qq openssh-client"
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+      containers:
+        - name: slurm-exporter
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.slurmExporter.image.repository "tag" .Values.slurmExporter.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/scripts/slurm_job_exporter.py"]
+          env:
+            - name: BCM_HOST
+              value: {{ .Values.slurmExporter.env.BCM_HOST | quote }}
+            - name: BCM_USER
+              value: {{ .Values.slurmExporter.env.BCM_USER | quote }}
+            - name: BCM_SSH_KEY
+              value: "/ssh/id_ed25519"
+            - name: CLUSTER_NAME
+              value: {{ .Values.clusterName | quote }}
+            - name: SLURM_PORT
+              value: {{ .Values.slurmExporter.env.SLURM_PORT | quote }}
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.slurmExporter.env.SCRAPE_INTERVAL | quote }}
+            - name: SACCT_HOURS
+              value: {{ .Values.slurmExporter.env.SACCT_HOURS | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.slurmExporter.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+          resources:
+            {{- toYaml .Values.slurmExporter.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.slurmExporter.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.slurmExporter.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 15
+            failureThreshold: 3
+      volumes:
+        - name: scripts
+          configMap:
+            name: nvis-slurm-exporter-scripts
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.slurmExporter.sshSecretName }}
+            defaultMode: 0400
+---
+# =============================================================================
+# Slurm Exporter Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-slurm-exporter
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-slurm-exporter
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-slurm-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.slurmExporter.port }}
+      targetPort: {{ .Values.slurmExporter.port }}
+      protocol: TCP
+{{- end }}

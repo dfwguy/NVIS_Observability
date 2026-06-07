@@ -1,0 +1,111 @@
+# =============================================================================
+# nvis-gpu-agents — values.yaml
+# =============================================================================
+# For airgapped environments set imageRegistry to your local registry, e.g.:
+#   imageRegistry: "registry.local:5000"
+# All image references become: registry.local:5000/nvcr.io/nvidia/k8s/dcgm-exporter:...
+# =============================================================================
+
+# Image registry prefix for airgapped environments (empty = use public registries)
+imageRegistry: ""
+
+# Kubernetes namespace to deploy into
+namespace: nvis-monitoring
+
+# Cluster name — used as a label on ALL metrics and logs sent to Prometheus/Loki
+# Must match what Grafana dashboard $cluster variable expects
+cluster: "my-cluster"
+
+# =============================================================================
+# Remote endpoints — where to push metrics and logs
+# If deploying nvis-obsvm in the same cluster, use the K8s service DNS names:
+#   prometheusUrl: "http://nvis-obsvm-prometheus.nvis-monitoring.svc:9090/api/v1/write"
+#   lokiUrl:       "http://nvis-obsvm-loki.nvis-monitoring.svc:3100/loki/api/v1/push"
+# If ObsVM is a separate VM outside K8s:
+#   prometheusUrl: "http://10.131.132.232:9090/api/v1/write"
+#   lokiUrl:       "http://10.131.132.232:3100/loki/api/v1/push"
+# =============================================================================
+remote:
+  prometheusUrl: "http://nvis-obsvm-prometheus.nvis-monitoring.svc:9090/api/v1/write"
+  lokiUrl: "http://nvis-obsvm-loki.nvis-monitoring.svc:3100/loki/api/v1/push"
+
+# =============================================================================
+# DCGM Exporter — GPU metrics (only runs on nodes with NVIDIA GPUs)
+# =============================================================================
+dcgmExporter:
+  enabled: true
+  image:
+    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    # NOTE: nvcr.io requires NGC API key to pull. For airgapped, save this image
+    # first with: docker pull --platform linux/amd64 nvcr.io/nvidia/k8s/dcgm-exporter:3.3.5-3.4.0-ubuntu22.04
+    tag: "4.2.3-4.1.1-ubuntu22.04"
+  port: 9400
+  # Only schedule on nodes that have NVIDIA GPUs
+  # If your cluster uses a different label, change this:
+  nodeSelector:
+    nvidia.com/gpu.present: "true"
+  # Tolerate the GPU taint (common: nvidia.com/gpu=NoSchedule)
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# =============================================================================
+# node_exporter — host-level metrics (CPU, memory, disk, network)
+# Runs on ALL nodes (not just GPU nodes)
+# =============================================================================
+nodeExporter:
+  enabled: true
+  image:
+    repository: quay.io/prometheus/node-exporter
+    tag: "v1.8.1"
+  port: 9100
+  # Run on all nodes (no nodeSelector)
+  nodeSelector: {}
+  tolerations:
+    - operator: Exists  # tolerate all taints — we want this on every node
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# =============================================================================
+# Grafana Alloy — metrics/logs collector and forwarder
+# Scrapes DCGM + node_exporter on each node, pushes to Prometheus + Loki
+# =============================================================================
+alloy:
+  enabled: true
+  image:
+    repository: grafana/alloy
+    tag: "v1.3.0"
+  # Run on all nodes (Alloy on non-GPU nodes won't find DCGM — that's fine,
+  # it just gets empty results and skips)
+  nodeSelector: {}
+  tolerations:
+    - operator: Exists
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  # Scrape intervals
+  scrapeInterval: "15s"
+  # Log collection — set to false if nodes don't have systemd journal
+  collectJournalLogs: true
+  # Override port to scrape DCGM (empty = use dcgmExporter.port)
+  # Set when DCGM is pre-installed (dcgmExporter.enabled=false) and on a non-default port.
+  dcgmScrapePort: ""
+  # Set when node-exporter is pre-installed (nodeExporter.enabled=false) — e.g. Run.ai deploys it.
+  nodeExporterScrapePort: ""

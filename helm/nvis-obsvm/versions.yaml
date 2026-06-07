@@ -1,0 +1,81 @@
+# =============================================================================
+# NVIS Observability — Centralized Version Pins
+# =============================================================================
+# This is the SINGLE SOURCE OF TRUTH for all image versions.
+#
+# UPGRADE WORKFLOW:
+#   1. Edit this file (bump any version you want to upgrade)
+#   2. Run: ./setup.sh --k8s --upgrade
+#   3. Helm will rolling-update only the pods whose image changed.
+#
+# AIRGAP WORKFLOW:
+#   1. Edit versions here on a connected machine
+#   2. Run: ./setup.sh --airgap    (saves all images to nvis-images.tar)
+#   3. Ship nvis-images.tar + this repo to the customer site
+#   4. Run: ./setup.sh --k8s       (--airgap flag auto-detected if tar present)
+#
+# VERSION COMPATIBILITY NOTES:
+#   - Prometheus v2.54+ required for --web.enable-remote-write-receiver
+#   - Loki 3.x uses schema v13 (tsdb); do NOT downgrade to 2.x without schema migration
+#   - Grafana 11.x requires datasource uid fields in provisioning YAML
+#   - VictoriaMetrics v1.103+ required for Prometheus-compatible /api/v1/write
+#   - Thanos v0.36+ required for receive mode with remote write
+# =============================================================================
+
+images:
+  prometheus:
+    repository: prom/prometheus
+    tag: "v2.54.1"
+    digest: ""   # Optional: pin to sha256:... for immutable deploys
+
+  grafana:
+    repository: grafana/grafana
+    tag: "11.1.4"
+    digest: ""
+
+  loki:
+    repository: grafana/loki
+    tag: "3.1.0"
+    digest: ""
+
+  victoriametrics:
+    repository: victoriametrics/victoria-metrics
+    tag: "v1.103.0"
+    digest: ""
+
+  # Thanos components (only used when --storage=thanos)
+  thanos:
+    repository: quay.io/thanos/thanos
+    tag: "v0.36.1"
+    digest: ""
+
+  # Exporters — Python-based, built from slim base
+  bcmExporter:
+    repository: python
+    tag: "3.11-slim"
+    digest: ""
+
+  slurmExporter:
+    repository: python
+    tag: "3.11-slim"
+    digest: ""
+
+  s4kGenerator:
+    repository: python
+    tag: "3.11-slim"
+    digest: ""
+
+  redfishExporter:
+    repository: python
+    tag: "3.11-slim"
+    digest: ""
+
+  # Sidecar / utility images
+  busybox:
+    repository: busybox
+    tag: "1.36"
+    digest: ""
+
+# Chart version metadata (informational only)
+chartVersion: "2.0.0"
+lastUpdated: "2026-04-05"

@@ -1,0 +1,39 @@
+# =============================================================================
+# topology_config.yaml.example — LLDPq topology layer/icon mapping
+# Copy to topology_config.yaml and adjust patterns to match your hostnames.
+# =============================================================================
+#
+# Pattern matching uses REGEX against device hostnames.
+# Layer ordering: lower number = higher in the rendered topology diagram.
+#   Spines at top (layer 1), leaves in middle (layer 2), compute at bottom (layer 3).
+#
+# Icons: switch | router | firewall | server | host | unknown
+# =============================================================================
+
+topology: minimal   # [full] renders all LLDP neighbors; [minimal] filters to known devices only
+
+device_categories:
+
+  # Spines (top of fabric)
+  - pattern: ".*SPINE.*"
+    layer: 1
+    icon: "switch"
+
+  # Leaves / ToR switches
+  - pattern: ".*LEAF.*"
+    layer: 2
+    icon: "switch"
+
+  # Compute endpoints (DGX, HGX, etc.)
+  - pattern: ".*dgx.*"
+    layer: 3
+    icon: "server"
+
+  - pattern: ".*compute.*"
+    layer: 3
+    icon: "server"
+
+# Default for unmatched devices
+default:
+  layer: 9
+  icon: "server"

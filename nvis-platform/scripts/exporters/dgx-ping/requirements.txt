@@ -1,0 +1,8 @@
+# NVIS Platform -- DGX Ping Exporter dependencies.
+#
+# The exporter intentionally uses only the Python standard library for its
+# core logic (http.server + subprocess shelling out to /bin/ping), so the
+# only optional pin is for prometheus_client should future versions of this
+# exporter want to switch to that client. It is listed here so the image is
+# uniform with the other NVIS Platform exporters.
+prometheus_client==0.20.0

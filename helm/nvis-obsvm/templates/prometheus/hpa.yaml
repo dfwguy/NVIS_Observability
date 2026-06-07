@@ -1,0 +1,53 @@
+{{- if and .Values.prometheus.enabled .Values.prometheus.hpa.enabled }}
+---
+# =============================================================================
+# Prometheus HorizontalPodAutoscaler
+# =============================================================================
+# NOTE: Prometheus is a StatefulSet. HPA on StatefulSets works but requires
+# careful consideration:
+#   - Each replica is an INDEPENDENT scraper (no data sharing).
+#   - Use only if you are running multiple independent Prometheus shards
+#     (e.g., each shard scrapes a subset of targets via consistent hashing).
+#   - For a single-instance setup the HPA triggers failover-style restarts;
+#     min=1/max=1 is safe, min=1/max=3 only for sharded setups.
+#
+# For the demo 4000-node cluster, this provides CPU-triggered scale-out
+# where each new replica is an independent Prometheus shard. Remote write
+# ensures all shards funnel data to the same VictoriaMetrics/Thanos backend.
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: nvis-prometheus-hpa
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: StatefulSet
+    name: nvis-prometheus
+  minReplicas: {{ .Values.prometheus.hpa.minReplicas }}
+  maxReplicas: {{ .Values.prometheus.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.prometheus.hpa.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min cooldown before scaling in
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+{{- end }}

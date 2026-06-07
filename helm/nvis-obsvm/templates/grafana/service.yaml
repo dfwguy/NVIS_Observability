@@ -1,0 +1,26 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.grafana.serviceType }}
+  selector:
+    app: nvis-grafana
+  ports:
+    - name: http
+      port: {{ .Values.grafana.port }}
+      targetPort: {{ .Values.grafana.port }}
+      protocol: TCP
+      {{- if eq .Values.grafana.serviceType "NodePort" }}
+      nodePort: {{ .Values.grafana.nodePort }}
+      {{- end }}
+{{- end }}

@@ -1,0 +1,89 @@
+{{- if .Values.prometheus.enabled }}
+---
+# =============================================================================
+# Prometheus ConfigMap — prometheus.yml
+# =============================================================================
+# Architecture note:
+#   GPU nodes run Alloy (nvis-gpu-agents chart) which remote_writes here.
+#   Prometheus also scrapes the local exporters (bcm, slurm, s4k) that run
+#   as pods in this namespace.
+#   Long-term storage: Prometheus remote_writes to VictoriaMetrics or Thanos.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-prometheus-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-prometheus
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      external_labels:
+        cluster: {{ .Values.clusterName | quote }}
+        replica: prometheus-0
+
+    scrape_configs:
+      # Self-scrape
+      - job_name: prometheus
+        static_configs:
+          - targets: ["localhost:{{ .Values.prometheus.port }}"]
+
+      {{- if .Values.bcmExporter.enabled }}
+      # BCM Exporter — node/GPU inventory via SSH to BCM head node
+      - job_name: bcm-exporter
+        scrape_interval: 60s
+        scrape_timeout: 30s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-bcm-exporter.{{ .Values.namespace }}.svc:{{ .Values.bcmExporter.port }}"]
+      {{- end }}
+
+      {{- if .Values.slurmExporter.enabled }}
+      # Slurm Job Exporter — squeue + sacct data
+      - job_name: slurm-job-exporter
+        scrape_interval: 30s
+        scrape_timeout: 25s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-slurm-exporter.{{ .Values.namespace }}.svc:{{ .Values.slurmExporter.port }}"]
+      {{- end }}
+
+      {{- if .Values.ufmExporter.enabled }}
+      # UFM Exporter — InfiniBand fabric metrics
+      - job_name: ufm
+        scrape_interval: 30s
+        scrape_timeout: 25s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-ufm-exporter.{{ .Values.namespace }}.svc:{{ .Values.ufmExporter.port }}"]
+      {{- end }}
+
+      {{- if .Values.s4kGenerator.enabled }}
+      # Stress-4k synthetic metric generator — 4000 simulated nodes
+      - job_name: s4k-generator
+        scrape_interval: 15s
+        scrape_timeout: 14s
+        honor_labels: true
+        static_configs:
+          - targets: ["nvis-s4k-generator.{{ .Values.namespace }}.svc:{{ .Values.s4kGenerator.port }}"]
+      {{- end }}
+
+      {{- if .Values.prometheus.extraScrapeConfigs }}
+      {{- toYaml .Values.prometheus.extraScrapeConfigs | nindent 6 }}
+      {{- end }}
+
+    # Forward to long-term storage backend
+    remote_write:
+      - url: {{ include "nvis.remoteWriteURL" . }}
+        queue_config:
+          max_samples_per_send: 10000
+          capacity: 100000
+          max_shards: 8
+
+      {{- if .Values.prometheus.extraRemoteWrite }}
+      {{- toYaml .Values.prometheus.extraRemoteWrite | nindent 6 }}
+      {{- end }}
+{{- end }}

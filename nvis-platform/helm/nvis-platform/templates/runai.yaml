@@ -1,0 +1,22 @@
+{{- if .Values.integrations.runai.enabled }}
+---
+# =============================================================================
+# RunAI federation — no exporter pod, just a ConfigMap with the federation
+# target so prometheus.yaml can reference it. The actual scrape job is already
+# rendered into the Prometheus ConfigMap when integrations.runai.enabled=true.
+#
+# install.sh also creates the RunAI token Secret before helm install.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-runai-federation
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-runai
+data:
+  url: {{ .Values.integrations.runai.url | quote }}
+  clusterUuid: {{ .Values.integrations.runai.clusterUuid | quote }}
+  promTarget: {{ .Values.integrations.runai.promTarget | quote }}
+  tokenSecretName: {{ .Values.integrations.runai.tokenSecret | quote }}
+{{- end }}

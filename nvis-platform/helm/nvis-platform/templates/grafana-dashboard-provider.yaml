@@ -1,0 +1,43 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana dashboard provider provisioning ConfigMap
+# =============================================================================
+# Two providers — one per dashboard pack. Folders make the UI easier to browse.
+# Files are mounted via projected volumes (see grafana.yaml) under
+# /var/lib/grafana/dashboards/{hw,obs}.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-dashboard-provider
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      {{- if .Values.dashboards.hwValidation.enabled }}
+      - name: nvis-hw-validation
+        type: file
+        folder: HW Validation
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/hw
+          foldersFromFilesStructure: false
+      {{- end }}
+      {{- if .Values.dashboards.observability.enabled }}
+      - name: nvis-observability
+        type: file
+        folder: Observability
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/obs
+          foldersFromFilesStructure: false
+      {{- end }}
+{{- end }}

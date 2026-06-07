@@ -1,0 +1,114 @@
+{{- if .Values.s4kGenerator.enabled }}
+{{- /*
+  NOTE: The ConfigMap nvis-s4k-generator-scripts is NOT defined in this template.
+  setup-k8s.sh creates it before helm install via kubectl create configmap.
+*/ -}}
+---
+# =============================================================================
+# Stress-4k Generator Deployment
+# =============================================================================
+# s4k_generator.py generates synthetic metrics simulating a 4000-node cluster.
+# It is a pure HTTP server (no SSH needed) so the security context is stricter.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-s4k-generator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-s4k-generator
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-s4k-generator
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: nvis-s4k-generator
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+      annotations:
+        checksum/scripts: {{ .Values.s4kGenerator.image.tag | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-exporters
+      containers:
+        - name: s4k-generator
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.s4kGenerator.image.repository "tag" .Values.s4kGenerator.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          command: ["python3", "/scripts/s4k_generator.py"]
+          env:
+            - name: PORT
+              value: {{ .Values.s4kGenerator.env.PORT | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.s4kGenerator.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            {{- toYaml .Values.s4kGenerator.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true   # s4k is stateless, no writes needed
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.s4kGenerator.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: {{ .Values.s4kGenerator.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: scripts
+          configMap:
+            name: nvis-s4k-generator-scripts
+---
+# =============================================================================
+# S4K Generator Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-s4k-generator
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-s4k-generator
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-s4k-generator
+  ports:
+    - name: metrics
+      port: {{ .Values.s4kGenerator.port }}
+      targetPort: {{ .Values.s4kGenerator.port }}
+      protocol: TCP
+{{- end }}

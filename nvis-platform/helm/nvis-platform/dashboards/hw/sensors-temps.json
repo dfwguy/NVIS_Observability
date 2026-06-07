@@ -1,0 +1,1342 @@
+{
+  "title": "${dgx_flavor} - Per-Sensor Temperatures (granular /Sensors endpoint, 80s scrape)",
+  "uid": "nvis-hwval-sensors-temps",
+  "description": "Per-component temperature dashboard for DGX sourced from the granular /redfish/v1/Chassis/{ch}/Sensors endpoint. Temperatures only — no fan, power, SEL, or SOL panels. Built for David Wise (NVIDIA) to inspect every single temperature sensor.",
+  "tags": [
+    "temperatures",
+    "sensors",
+    "hwval"
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "timezone": "browser",
+  "refresh": "60s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "editable": true,
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "nvis-prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Data Source",
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "queryValue": "",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      },
+      {
+        "name": "cluster",
+        "label": "Cluster",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "nvis-prometheus"
+        },
+        "query": {
+          "query": "label_values(up, cluster)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 1,
+        "sort": 1,
+        "multi": false,
+        "includeAll": true,
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "__CLUSTER_NAME__",
+            "value": "__CLUSTER_NAME__"
+          }
+        ],
+        "hide": 0,
+        "allValue": ".*",
+        "definition": "label_values(up, cluster)"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(redfish_fast_up, dgx_flavor)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "DGX Flavor",
+        "multi": false,
+        "name": "dgx_flavor",
+        "options": [],
+        "query": {
+          "query": "label_values(redfish_fast_up, dgx_flavor)",
+          "refId": "DgxFlavorQuery"
+        },
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query",
+        "allValue": ".*"
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "nvis-prometheus"
+        },
+        "query": {
+          "query": "label_values(redfish_sensor_celsius{cluster=~\"$cluster\"}, bmc)",
+          "refId": "PrometheusVariableQueryEditor-VariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".+",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "hide": 0
+      },
+      {
+        "name": "search",
+        "type": "textbox",
+        "label": "Filter sensor name (regex)",
+        "description": "Free-text case-insensitive regex applied ONLY to the overview panel at top. Per-family panels ignore this so you can browse a family while filtering the overview.",
+        "current": {
+          "text": "",
+          "value": "",
+          "selected": false
+        },
+        "query": "",
+        "hide": 0,
+        "skipUrlSync": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "All Temperatures (overview — use Search box to filter)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "All Temperatures °C (filtered by Search regex)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i).*${search:raw}.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "row",
+      "title": "CPU temps (sockets + zones — TEMP_CPU0/1 + TEMP_CPU0_ABCD/EFGH + TEMP_CPU1_MNOP/IJKL)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 11
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "CPU Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)(^TEMP_CPU.*|^TEMP_GB_CPU.*|.*_CPU[0-9]+.*)\"}",
+          "legendFormat": "{{bmc}} / {{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "GPU temps (per slot — TEMP_0 hot-spot, TEMP_1 die-edge, DRAM, SXM)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 22
+      }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "GPU Temperatures °C — per slot",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^HGX_GPU_[0-9]+_(TEMP_[01]|DRAM_[0-9]+_Temp_[0-9]+)$|^HGX_GPU_SXM_[0-9]+_TEMP_.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "row",
+      "title": "NVSwitch temps (NVLink fabric)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "NVSwitch Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 34
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^HGX_NVSwitch_[0-9]+_TEMP.*|^TEMP_GB_NVS.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "type": "row",
+      "title": "CX8 NIC temps (8 adapters)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 44
+      }
+    },
+    {
+      "id": 41,
+      "type": "timeseries",
+      "title": "CX8 NIC Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^TEMP_CX[78].*|^HGX_ConnectX(_SMA)?_[0-9]+_Temp.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "type": "row",
+      "title": "BF3 / NVLinkMgmt NIC temps",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      }
+    },
+    {
+      "id": 51,
+      "type": "timeseries",
+      "title": "BF3 / NVLink Management NIC Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^HGX_NVLinkManagementNIC_[0-9]+_Temp.*|^TEMP_BF_.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "type": "row",
+      "title": "DIMM temps (per-channel memory)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 66
+      }
+    },
+    {
+      "id": 61,
+      "type": "timeseries",
+      "title": "DIMM Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 67
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)(^TEMP_DIMM.*|^TEMP_MEM.*|^TEMP_GB_DIMM.*|.*DIMM.*Temp.*|.*Memory.*Temp.*)\"}",
+          "legendFormat": "{{bmc}} / {{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 70,
+      "type": "row",
+      "title": "Drive temps (NVMe / M.2 / E1.S)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      }
+    },
+    {
+      "id": 71,
+      "type": "timeseries",
+      "title": "Drive Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 78
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)(^TEMP_E1S_.*|^TEMP_NVME.*|^TEMP_M2_.*|^TEMP_GB_M2.*)\"}",
+          "legendFormat": "{{bmc}} / {{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 80,
+      "type": "row",
+      "title": "Inlet / Outlet / Ambient (chassis air-flow)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 88
+      }
+    },
+    {
+      "id": 81,
+      "type": "timeseries",
+      "title": "Inlet / Outlet / Ambient Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 89
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^TEMP_(INLET|OUTLET|AMBIENT).*|^HGX_Chassis_[0-9]+_Inlet_.*Temp.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 90,
+      "type": "row",
+      "title": "PDB / Power-board temps",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 99
+      }
+    },
+    {
+      "id": 91,
+      "type": "timeseries",
+      "title": "PDB / Power-Board Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 100
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)(^TEMP_PDB.*|^TEMP_50V_PDB.*|^TEMP_GB_PCB.*|^HGX_Chassis_[0-9]+_PCB_.*Temp.*)\"}",
+          "legendFormat": "{{bmc}} / {{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 100,
+      "type": "row",
+      "title": "HSC / VR temps (hot-swap controllers + voltage regulators)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 110
+      }
+    },
+    {
+      "id": 101,
+      "type": "timeseries",
+      "title": "HSC / VR Temperatures °C",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 111
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 20,
+          "max": 110,
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "width": 380,
+          "calcs": [
+            "min",
+            "max",
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\", sensor=~\"(?i)^TEMP_GB_HSC.*|^TEMP_VR_.*|^TEMP_SXM.*VR.*|^HGX_Chassis_[0-9]+_HSCC?_[0-9]+_Temp.*\"}",
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "type": "row",
+      "title": "OVERT alerts (BMC SEL events — not exposed as temp sensors on DGX; queried from IPMI SEL Loki stream)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 121
+      }
+    },
+    {
+      "id": 111,
+      "type": "logs",
+      "title": "OVERT_* SEL events (last 6h, all BMCs)",
+      "datasource": {
+        "type": "loki",
+        "uid": "nvis-loki"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 122
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "nvis-loki"
+          },
+          "expr": "{job=~\"redfish-sel|ipmi-sel\", cluster=~\"$cluster\"} |~ \"(?i)overt|over.?temp|thermal.?trip|ierr\"",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 200,
+      "type": "row",
+      "title": "Latest reading per sensor (sortable table — all components)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 132
+      }
+    },
+    {
+      "id": 201,
+      "type": "table",
+      "title": "Latest reading per sensor (sortable, all components)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nvis-prometheus"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 133
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 100
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "°C"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "sensor"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "chassis"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 200
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "footer": {
+          "show": false
+        },
+        "sortBy": [
+          {
+            "displayName": "°C",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "reduce",
+          "options": {
+            "reducers": [
+              "lastNotNull"
+            ],
+            "includeTimeField": false,
+            "labelsToFields": true
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "bmc": true,
+              "cluster": true,
+              "serial": true,
+              "__name__": true,
+              "instance": true,
+              "job": true,
+              "physical_context": true,
+              "status": true
+            },
+            "indexByName": {
+              "chassis": 0,
+              "sensor": 1,
+              "Last *": 2
+            },
+            "renameByName": {
+              "Last *": "°C",
+              "lastNotNull": "°C"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nvis-prometheus"
+          },
+          "expr": "redfish_sensor_celsius{cluster=~\"$cluster\", bmc=~\"$node\"}",
+          "format": "time_series",
+          "instant": false,
+          "legendFormat": "{{chassis}}/{{sensor}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "title": "Hardware Validation Home",
+      "url": "/d/nvis-hwval-home",
+      "type": "link",
+      "icon": "home",
+      "tags": [],
+      "asDropdown": false,
+      "includeVars": false,
+      "keepTime": false,
+      "targetBlank": false,
+      "tooltip": "Back to NVIS Hardware Validation Home"
+    }
+  ]
+}

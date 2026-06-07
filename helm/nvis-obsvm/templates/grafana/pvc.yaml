@@ -1,0 +1,26 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana PersistentVolumeClaim
+# =============================================================================
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nvis-grafana-data
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+  annotations:
+    # Prevent accidental deletion during helm uninstall
+    helm.sh/resource-policy: keep
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if .Values.grafana.persistence.storageClass }}
+  storageClassName: {{ .Values.grafana.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.grafana.persistence.size }}
+{{- end }}

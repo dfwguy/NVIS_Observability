@@ -1,0 +1,24 @@
+version: "3.8"
+
+services:
+  lldpq:
+    image: ghcr.io/mna/lldpq:3.7.4
+    container_name: lldpq
+    restart: unless-stopped
+    network_mode: host        # needs L2 access to reach switch management IPs
+    volumes:
+      - ./lldpq-config/devices.yaml:/app/devices.yaml:ro
+      - ./lldpq-config/topology_config.yaml:/app/topology_config.yaml:ro
+      - ./lldpq-ssh-keys:/root/.ssh:ro   # SSH keys for switch access
+    environment:
+      - LLDPQ_PORT=8080
+      - LLDPQ_LOG_LEVEL=info
+    ports:
+      - "8080:8080"           # LLDPq web UI and metrics endpoint
+    labels:
+      - "prometheus.scrape=true"
+      - "prometheus.port=8080"
+      - "prometheus.path=/metrics"
+
+# Mount your SSH private key at lldpq-ssh-keys/id_rsa (chmod 600).
+# The key must be authorized on the switch management accounts.

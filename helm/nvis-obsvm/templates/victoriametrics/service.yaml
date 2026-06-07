@@ -1,0 +1,42 @@
+{{- if and .Values.victoriametrics.enabled (eq (include "nvis.storage" .) "victoria") }}
+---
+# =============================================================================
+# VictoriaMetrics Service
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-victoriametrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-victoriametrics
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  selector:
+    app: nvis-victoriametrics
+  ports:
+    - name: http
+      port: {{ .Values.victoriametrics.port }}
+      targetPort: {{ .Values.victoriametrics.port }}
+      nodePort: {{ .Values.victoriametrics.nodePort }}
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-victoriametrics-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-victoriametrics
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: nvis-victoriametrics
+  ports:
+    - name: http
+      port: {{ .Values.victoriametrics.port }}
+      targetPort: {{ .Values.victoriametrics.port }}
+{{- end }}

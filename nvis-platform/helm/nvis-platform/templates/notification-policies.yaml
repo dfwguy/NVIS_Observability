@@ -1,0 +1,47 @@
+{{- if and .Values.grafana.enabled .Values.alerts.enabled }}
+---
+# =============================================================================
+# Grafana provisioned notification policies
+# =============================================================================
+# Fan-out for alert_class=bmc_down to every enabled channel. Continue=true on
+# the first two routes so a single alert can hit email + teams + slack.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-notification-policies
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  notification-policies.yaml: |
+    apiVersion: 1
+    policies:
+      - orgId: 1
+        receiver: {{ if .Values.alerts.email.enabled }}email{{ else if .Values.alerts.teams.enabled }}teams{{ else if .Values.alerts.slack.enabled }}slack{{ else }}email{{ end }}
+        group_by: [bmc, alertname]
+        group_wait: 30s
+        group_interval: 1m
+        repeat_interval: 4h
+        routes:
+          - object_matchers:
+              - ['alert_class', '=', 'bmc_down']
+            {{- if .Values.alerts.email.enabled }}
+            receiver: email
+            continue: true
+            group_by: [bmc]
+            {{- end }}
+          {{- if and .Values.alerts.email.enabled .Values.alerts.teams.enabled }}
+          - object_matchers:
+              - ['alert_class', '=', 'bmc_down']
+            receiver: teams
+            continue: true
+            group_by: [bmc]
+          {{- end }}
+          {{- if and (or .Values.alerts.email.enabled .Values.alerts.teams.enabled) .Values.alerts.slack.enabled }}
+          - object_matchers:
+              - ['alert_class', '=', 'bmc_down']
+            receiver: slack
+            group_by: [bmc]
+          {{- end }}
+{{- end }}

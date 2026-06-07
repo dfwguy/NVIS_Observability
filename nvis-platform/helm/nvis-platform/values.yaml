@@ -1,0 +1,222 @@
+# =============================================================================
+# nvis-platform — values.yaml
+# =============================================================================
+# All empty strings ("") are placeholders that MUST be filled by install.sh
+# at install time (the wizard collects them). Do NOT put internal infrastructure
+# defaults here — this chart is shipped as a generic public artifact.
+# Secrets MUST be created (kubectl create secret ...) BEFORE helm install.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Cluster identity — REQUIRED at install
+# ---------------------------------------------------------------------------
+cluster:
+  name: ""                  # CLUSTER_NAME from wizard — no default
+  dgxFlavor: ""             # from detect.sh — e.g. DGX_BLACKWELL, DGX_HOPPER, UNKNOWN
+
+# ---------------------------------------------------------------------------
+# Image config — generic placeholder by default
+# ---------------------------------------------------------------------------
+image:
+  registry: ""              # blank = use defaults below
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+  tag: ""                   # defaults to .Chart.AppVersion
+
+# ---------------------------------------------------------------------------
+# Storage
+# ---------------------------------------------------------------------------
+storage:
+  prometheus:
+    size: 100Gi
+    storageClass: ""
+  loki:
+    size: 50Gi
+    storageClass: ""
+
+# ---------------------------------------------------------------------------
+# Grafana
+# ---------------------------------------------------------------------------
+grafana:
+  enabled: true
+  nodePort: 30300
+  adminPassword: ""         # MUST be set by install.sh (auto-gen if blank)
+  rootUrl: ""               # auto-set by install.sh from hostname -I
+  image:
+    repository: grafana/grafana
+    tag: "11.1.4"
+  smtp:
+    enabled: false          # alerts.email.enabled mirrors this
+    host: ""
+    port: 25
+    fromAddress: ""
+    fromName: "NVIS Platform Alerts"
+    user: ""
+    password: ""
+    startTls: true
+
+# ---------------------------------------------------------------------------
+# Prometheus
+# ---------------------------------------------------------------------------
+prometheus:
+  enabled: true
+  port: 9090
+  retention: "30d"
+  image:
+    repository: prom/prometheus
+    tag: "v2.54.1"
+  externalLabels:
+    cluster: ""             # cluster.name copied here at install
+    dgx_flavor: ""          # cluster.dgxFlavor copied here at install
+  extraScrapeConfigs: []    # populated by install.sh based on integrations
+
+# ---------------------------------------------------------------------------
+# Loki
+# ---------------------------------------------------------------------------
+loki:
+  enabled: true
+  port: 3100
+  retention: "168h"
+  image:
+    repository: grafana/loki
+    tag: "3.1.0"
+
+# ---------------------------------------------------------------------------
+# Alloy (in-cluster proxy, NOT the per-node DaemonSet on GPU nodes)
+# ---------------------------------------------------------------------------
+alloy:
+  enabled: true
+  port: 12345
+  image:
+    repository: grafana/alloy
+    tag: "v1.3.1"
+
+# ---------------------------------------------------------------------------
+# Integrations — every one independently toggleable
+# ---------------------------------------------------------------------------
+integrations:
+  dcgm:
+    enabled: true           # GPU metrics DaemonSet (delegated to nvis-gpu-agents chart)
+  nodeExporter:
+    enabled: true
+  alloyLogs:
+    enabled: true
+  bcm:
+    enabled: false
+    host: ""
+    user: "root"
+    sshKeySecret: "nvis-bcm-ssh-key"
+    port: 9401
+    scrapeInterval: 60
+  slurm:
+    enabled: false          # depends on bcm
+    port: 9402
+    scrapeInterval: 30
+    sacctHours: 72
+  cgroupExporter:
+    enabled: false          # treydock/cgroup_exporter DaemonSet on Slurm compute nodes
+    image: quay.io/treydock/cgroup_exporter
+    tag: v0.10.0
+    port: 9306
+    paths:
+      - /slurm
+    nodeSelector: {}        # e.g. { node-role.kubernetes.io/gpu-compute: "true" }
+    tolerations: []
+  redfish:
+    enabled: false
+    hosts: ""               # comma-separated
+    credentialsSecret: "nvis-bmc-credentials"
+    scrapeInterval: 60
+    bmcTimeout: 10
+    verifySSL: "false"
+    fastChassisId: ""
+  redfishNm:
+    enabled: false
+  redfishFast:
+    enabled: false
+  redfishSensors:
+    enabled: false
+  ipmiSel:
+    enabled: false
+    credentialsJsonSecret: "nvis-bmc-credentials-json"
+    pollInterval: 300
+    ipmitoolTimeout: 240
+  ipmiSol:
+    enabled: false
+  powershelf:
+    enabled: false                      # LiteOn PF-1333-13RD shelves
+    hosts: ""                           # comma-separated shelf IPs, or @/path/to/hosts
+    credentialsSecret: "nvis-powershelf-credentials"  # keys: username, password
+    port: 9103
+    scrapeInterval: 30
+    verifySSL: "false"
+    timeout: 10
+    maxWorkers: 16
+    sensorWorkers: 8                    # BMC PMC caps concurrent at ~8
+    psuFwExpected: "0xf1 / 0xf1"
+  ufm:
+    enabled: false
+    host: ""
+    credentialsSecret: "nvis-ufm-credentials"
+    port: 9103
+    scrapeInterval: 30
+  netq:
+    enabled: false
+    url: ""
+    credentialsSecret: "nvis-netq-credentials"
+    port: 9109
+    scrapeInterval: 30
+    httpTimeout: 15
+    verifySSL: "true"
+  runai:
+    enabled: false
+    url: ""
+    clusterUuid: ""
+    promTarget: ""
+    tokenSecret: "nvis-runai-token"
+  nmc:
+    enabled: false                      # NVIDIA Mission Control federation
+    host: ""                            # NMC head node (BCM exporter host)
+    port: 8081                          # BCM exporter port on NMC head
+    path: "/exporter"                   # BCM exporter metrics path
+    scheme: "https"                     # NMC ships TLS-only
+    verifySSL: "false"                  # NMC cert is typically self-signed
+    basicAuthSecret: "nvis-nmc-credentials"   # Secret with 'username' + 'password' keys
+    scrapeInterval: 60
+    scrapeTimeout: 30
+    # Optional: pull NMC's DCGM exporter too (per-node :9400).
+    dcgmFederation:
+      enabled: false
+      targets: []                       # ["node001:9400", "node002:9400", ...]
+  dgxPing:
+    enabled: false
+    hosts: []               # list of "name=ip" strings, e.g. ["node-1=10.0.0.1"]
+    pingInterval: 30
+    pingCount: 5
+    pingTimeout: 2
+    port: 9116
+    scrapeInterval: 30
+
+# ---------------------------------------------------------------------------
+# Alerting
+# ---------------------------------------------------------------------------
+alerts:
+  enabled: false
+  email:
+    enabled: false
+    recipients: ""          # semicolon-separated
+  teams:
+    enabled: false
+    webhookSecret: "nvis-teams-webhook"   # contains 'url' key
+  slack:
+    enabled: false
+    webhookSecret: "nvis-slack-webhook"
+
+# ---------------------------------------------------------------------------
+# Dashboards — both packs
+# ---------------------------------------------------------------------------
+dashboards:
+  hwValidation:
+    enabled: true
+  observability:
+    enabled: true

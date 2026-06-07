@@ -1,0 +1,117 @@
+# obsvm-values.yaml.example
+# ObsVM site-specific helm values — copy to obsvm-values.yaml and fill in your site.
+# obsvm-values.yaml is git-ignored (contains site IPs/hostnames).
+#
+# Architecture: ObsVM (observer VM) scrapes exporters on compute nodes directly.
+# Alloy agents on nodes push logs to Loki on the ObsVM.
+#
+# Apply: helm upgrade nvis-obsvm ./helm/nvis-obsvm -f obsvm-values.yaml
+
+clusterName: "my-cluster"    # <-- SET THIS: must match exporter 'cluster' label
+storage: "victoria"
+
+obsvm:
+  externalIP: "10.X.X.X"     # ObsVM IP reachable by compute nodes for Loki push
+
+grafana:
+  allowEmbedding: true
+  extraEnv:
+    - { name: GF_AUTH_ANONYMOUS_ENABLED, value: "true" }
+    - { name: GF_AUTH_ANONYMOUS_ORG_ROLE, value: "Viewer" }
+    - { name: GF_SECURITY_ALLOW_EMBEDDING, value: "true" }
+
+# Disable exporters you don't have; enable what you do.
+bcmExporter:   { enabled: false }   # requires BCM SSH access (cmsh)
+slurmExporter: { enabled: false }   # using cgroup_exporter on nodes instead
+ufmExporter:   { enabled: false }   # for InfiniBand UFM; not needed for SPX/Ethernet
+s4kGenerator:  { enabled: false }
+
+prometheus:
+  extraScrapeConfigs:
+    - job_name: dcgm-exporter
+      scrape_interval: 15s
+      honor_timestamps: false
+      static_configs:
+        # Add one entry per GPU compute node
+        - { targets: ["COMPUTE-01-IP:9400"], labels: { node: "compute-01", cluster: "my-cluster" } }
+        - { targets: ["COMPUTE-02-IP:9400"], labels: { node: "compute-02", cluster: "my-cluster" } }
+
+    - job_name: node-exporter
+      scrape_interval: 15s
+      static_configs:
+        - { targets: ["COMPUTE-01-IP:9100"], labels: { node: "compute-01", cluster: "my-cluster" } }
+        - { targets: ["COMPUTE-02-IP:9100"], labels: { node: "compute-02", cluster: "my-cluster" } }
+        - { targets: ["HEAD-NODE-IP:9100"],  labels: { node: "head-node-01", cluster: "my-cluster" } }
+
+    - job_name: slurm-cgroup-exporter
+      scrape_interval: 30s
+      static_configs:
+        # Deploy cgroup_exporter to all Slurm-managed nodes (compute + head)
+        - { targets: ["COMPUTE-01-IP:9306"], labels: { node: "compute-01", cluster: "my-cluster" } }
+        - { targets: ["COMPUTE-02-IP:9306"], labels: { node: "compute-02", cluster: "my-cluster" } }
+        - { targets: ["HEAD-NODE-IP:9306"],  labels: { node: "head-node-01", cluster: "my-cluster" } }
+
+    - job_name: cadvisor
+      scrape_interval: 30s
+      static_configs:
+        # cAdvisor for per-job container cgroup stats (port 9280)
+        - { targets: ["COMPUTE-01-IP:9280"], labels: { node: "compute-01", cluster: "my-cluster" } }
+        - { targets: ["COMPUTE-02-IP:9280"], labels: { node: "compute-02", cluster: "my-cluster" } }
+        - { targets: ["HEAD-NODE-IP:9280"],  labels: { node: "head-node-01", cluster: "my-cluster" } }
+
+    - job_name: alloy
+      scrape_interval: 30s
+      static_configs:
+        # Grafana Alloy self-telemetry on each node (logs pipeline agent)
+        - { targets: ["COMPUTE-01-IP:12345"], labels: { node: "compute-01", cluster: "my-cluster" } }
+        - { targets: ["COMPUTE-02-IP:12345"], labels: { node: "compute-02", cluster: "my-cluster" } }
+        - { targets: ["HEAD-NODE-IP:12345"],  labels: { node: "head-node-01", cluster: "my-cluster" } }
+
+    - job_name: redfish-exporter
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9102"], labels: { redfish_group: "compute-bmc" } }
+        - { targets: ["127.0.0.1:9103"], labels: { redfish_group: "head-bmc" } }
+
+    - job_name: nvlink-exporter
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9106"], labels: { cluster: "my-cluster" } }
+
+    - job_name: spx-metrics
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9111"], labels: { cluster: "my-cluster" } }
+
+    - job_name: spx-lldpq-bridge
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9112"], labels: { cluster: "my-cluster" } }
+
+    - job_name: runai-exporter
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9105"] }
+
+    - job_name: cmdaemon-exporter
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9108"] }
+
+    - job_name: nvis-custom
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9110"] }
+
+    - job_name: ufm-spx
+      scrape_interval: 60s
+      honor_labels: true
+      static_configs:
+        - { targets: ["127.0.0.1:9109"] }

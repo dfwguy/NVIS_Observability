@@ -1,0 +1,776 @@
+{
+  "panels": [
+    {
+      "type": "text",
+      "title": "",
+      "gridPos": {
+        "h": 2,
+        "w": 3,
+        "x": 0,
+        "y": 0
+      },
+      "id": 9900,
+      "options": {
+        "mode": "html",
+        "content": "<div style=\"display:flex;align-items:center;height:100%;\"><a href=\"/d/nvis-demo-home\" style=\"display:inline-flex;align-items:center;gap:8px;padding:6px 16px;background:linear-gradient(135deg,#1a1a2e,#16213e);color:#00d4ff;border:1px solid #00d4ff;border-radius:6px;text-decoration:none;font-size:14px;font-weight:600;letter-spacing:0.5px;box-shadow:0 0 8px rgba(0,212,255,0.3);transition:all 0.2s;\" onmouseover=\"this.style.boxShadow='0 0 16px rgba(0,212,255,0.6)'\" onmouseout=\"this.style.boxShadow='0 0 8px rgba(0,212,255,0.3)'\">&#127968; NVIS Home</a></div>",
+        "justifyContent": "center",
+        "alignItems": "center"
+      },
+      "transparent": true
+    },
+    {
+      "gridPos": {
+        "h": 24,
+        "w": 24,
+        "x": 0,
+        "y": 2
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "plaintext",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div id=\"tw\" style=\"width:100%;height:100%;background:#07071a;color:#e0e0e0;font-family:'Roboto Mono',monospace;overflow:auto;\">\n<style>\n#tw *{box-sizing:border-box}\n@keyframes pulse{0%,100%{box-shadow:0 0 6px currentColor}50%{box-shadow:0 0 18px currentColor}}\n/* Header */\n#hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(90deg,#0a0a22,#12123a);border-bottom:2px solid;border-image:repeating-linear-gradient(90deg,#00d4ff 0,#00d4ff 12px,transparent 12px,transparent 22px,#7b2fff 22px,#7b2fff 34px,transparent 34px,transparent 44px) 1;flex-wrap:wrap}\n#hdr .logo{font-size:.82em;font-weight:800;background:linear-gradient(135deg,#00d4ff,#7b2fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:68px;line-height:1.3}\n#hdr .kpi{background:linear-gradient(135deg,#10103a,#1a1a4a);border:1px solid #2a2a6a;border-radius:7px;padding:5px 13px;text-align:center}\n.kv{font-size:1.5em;font-weight:800;line-height:1.1}\n.kl{font-size:.58em;color:#7777bb;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}\n#ts{margin-left:auto;font-size:.6em;color:#44448a;background:#0a0a1e;border:1px solid #1a1a3a;border-radius:4px;padding:3px 8px}\n/* Body */\n#body{padding:10px 14px}\n.sec-sep{height:1px;margin:12px 0 8px;background:linear-gradient(90deg,transparent,#1a1a44 20%,#1a1a44 80%,transparent);}\n.sec-lbl{font-size:.67em;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:4px;display:block;margin-bottom:7px}\n.node-grid{display:flex;flex-wrap:wrap;gap:7px}\n/* Node cards */\n.nc{display:inline-flex;flex-direction:column;gap:3px;border-radius:7px;padding:6px 11px;min-width:148px;cursor:pointer;transition:all .2s;border:1px solid transparent}\n.nc:hover{transform:translateY(-2px);filter:brightness(1.2)}\n.nc.crit{animation:pulse 1.4s ease-in-out infinite}\n.nct{font-size:.75em;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:5px}\n.ncr{display:flex;justify-content:space-between;font-size:.62em;color:#9999cc;margin-top:1px}\n.dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}\n/* Rack */\n.rack-grid{display:flex;flex-wrap:wrap;gap:6px}\n.rack{width:130px;height:72px;border-radius:6px;border:1px solid rgba(255,255,255,.15);padding:5px 9px;cursor:pointer;transition:all .2s}\n.rack:hover{transform:scale(1.05);z-index:2}\n.rn{font-size:.68em;font-weight:700;color:rgba(255,255,255,.8)}\n.ru{font-size:1.5em;font-weight:800;margin-top:2px}\n.rm{font-size:.58em;color:rgba(255,255,255,.5);margin-top:2px}\n/* RunAI chips */\n.rp{display:inline-block;border-radius:5px;padding:4px 10px;font-size:.66em;margin:3px 4px 3px 0;border:1px solid #3333aa;background:linear-gradient(135deg,#0f1535,#1a1f4a)}\n/* Hot list */\n.hn{display:inline-flex;gap:7px;align-items:center;background:linear-gradient(135deg,#1a1000,#201500);border:1px solid #4a3300;border-radius:5px;padding:3px 9px;font-size:.65em;margin:2px 3px 2px 0}\n/* Tooltip */\n#tip{display:none;position:fixed;top:60px;right:18px;width:260px;background:linear-gradient(160deg,#0d0d28,#13132e);border:1px solid #333377;border-radius:10px;padding:13px;z-index:200;max-height:76vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.7)}\n#tip h3{font-size:.8em;margin:0 0 9px;color:#aaaaff;border-bottom:1px solid #222255;padding-bottom:5px}\n.tr{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid #1a1a33;font-size:.64em}\n.tk{color:#7777aa}.tv{color:#ddeeff;text-align:right}\n</style>\n\n<div id=\"hdr\">\n  <div class=\"logo\">NVIS<br><span style=\"-webkit-text-fill-color:#5555aa;font-size:.8em\">TOPOLOGY</span></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-nodes\" style=\"color:#00d4ff\">-</div><div class=\"kl\">GPU Nodes</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-gpus\" style=\"color:#44bbff\">-</div><div class=\"kl\">GPUs</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-util\" style=\"color:#44ff88\">-</div><div class=\"kl\">Avg Util</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-pow\" style=\"color:#ffcc44\">-</div><div class=\"kl\">kW</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-temp\" style=\"color:#ff8844\">-</div><div class=\"kl\">Temp</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-err\" style=\"color:#44ff88\">-</div><div class=\"kl\">XIDs</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-wl\" style=\"color:#aa88ff\">-</div><div class=\"kl\">RunAI</div></div>\n  <div id=\"ts\">-</div>\n</div>\n\n<div id=\"body\">\n  <div class=\"sec-sep\"></div>\n  <div class=\"sec-lbl\" id=\"gpu-lbl\" style=\"color:#44ff88;background:rgba(68,255,136,.08);border-left:3px solid #44ff88\">GPU Nodes</div>\n  <div id=\"rack-grid\" class=\"rack-grid\" style=\"display:none\"></div>\n  <div id=\"node-grid\" class=\"node-grid\"></div>\n\n  <div id=\"s-cpu\">\n    <div class=\"sec-sep\"></div>\n    <div class=\"sec-lbl\" style=\"color:#00d4ff;background:rgba(0,212,255,.08);border-left:3px solid #00d4ff\">CPU / Management Nodes</div>\n    <div id=\"cpu-grid\" class=\"node-grid\"></div>\n  </div>\n\n  <div class=\"sec-sep\"></div>\n  <div class=\"sec-lbl\" style=\"color:#ff8833;background:rgba(255,136,51,.08);border-left:3px solid #ff8833\">Top 10 Hottest</div>\n  <div id=\"hot-list\"></div>\n\n  <div class=\"sec-sep\"></div>\n  <div class=\"sec-lbl\" style=\"color:#aa88ff;background:rgba(170,136,255,.08);border-left:3px solid #aa88ff\">RunAI Workloads</div>\n  <div id=\"runai-row\"></div>\n</div>\n\n<div id=\"tip\">\n  <h3 id=\"tip-title\">Node <span onclick=\"document.getElementById('tip').style.display='none'\" style=\"cursor:pointer;color:#555;float:right;font-weight:400\">x</span></h3>\n  <div id=\"tip-body\"></div>\n</div>\n\n<script>\nvar CLUSTER = '$cluster';\nvar DS_UID  = '${datasource}';\nvar PROM    = '/api/datasources/proxy/uid/' + DS_UID + '/api/v1/query';\nvar nodeDetails = {};\n\nfunction esc(s) {\n  return String(s).replace(/[<>&\"]/g, function(c) {\n    var m = {'<':'&lt;', '>':'&gt;', '&':'&amp;', '\"':'&quot;'};\n    return m[c];\n  });\n}\n\nfunction uColor(u) {\n  u = parseFloat(u) || 0;\n  if (u >= 90) return '#ff2244';\n  if (u >= 75) return '#ff7700';\n  if (u >= 50) return '#ffdd00';\n  if (u >= 20) return '#44ff88';\n  return '#3388ff';\n}\n\nfunction uBg(u) {\n  u = parseFloat(u) || 0;\n  if (u >= 90) return 'rgba(180,10,30,.45)';\n  if (u >= 75) return 'rgba(180,80,0,.38)';\n  if (u >= 50) return 'rgba(140,120,0,.35)';\n  if (u >= 20) return 'rgba(20,140,60,.28)';\n  return 'rgba(20,60,180,.28)';\n}\n\nfunction fmtP(v) { return (parseFloat(v) || 0).toFixed(1) + '%'; }\nfunction fmtW(v) { v = parseFloat(v) || 0; return v >= 1000 ? (v/1000).toFixed(1)+'kW' : v.toFixed(0)+'W'; }\nfunction rackOf(n) { var m = n.match(/(\\d+)$/); return m ? Math.floor((parseInt(m[1]) - 1) / 100) : null; }\nfunction cudaVer(d) {\n  var v = parseFloat(d) || 0;\n  if (v >= 570) return '12.8+'; if (v >= 550) return '12.4';\n  if (v >= 535) return '12.2';  if (v >= 525) return '12.0';\n  return '11.x';\n}\n\nfunction pq(q) {\n  return fetch(PROM + '?query=' + encodeURIComponent(q), {headers: {'Accept': 'application/json'}})\n    .then(function(r) { return r.json(); })\n    .then(function(d) { return (d.data || {}).result || []; })\n    .catch(function() { return []; });\n}\n\nfunction row(k, v) {\n  return '<div class=\"tr\"><span class=\"tk\">' + k + '</span><span class=\"tv\">' + esc(String(v || '-')) + '</span></div>';\n}\n\nfunction showTip(n) {\n  var nd = nodeDetails[n];\n  if (!nd) return;\n  var h = '';\n  h += row('Node', n);\n  h += row('Hostname', nd.hostname);\n  h += row('OS', nd.os);\n  h += row('Kernel', nd.kernel);\n  if (nd.driver) {\n    h += row('Driver', nd.driver);\n    h += row('CUDA ~', cudaVer(nd.driver));\n    h += row('GPU Model', nd.model);\n    h += row('GPU Count', nd.gpus);\n    h += row('GPU Util', fmtP(nd.util));\n    h += row('GPU Temp', nd.temp ? nd.temp + 'C' : '-');\n    h += row('Mem Used', nd.memUsed ? nd.memUsed + ' MiB' : '-');\n    h += row('Mem Free', nd.memFree ? nd.memFree + ' MiB' : '-');\n    h += row('Power', fmtW(nd.pow));\n  }\n  document.getElementById('tip-title').childNodes[0].textContent = n + ' ';\n  document.getElementById('tip-body').innerHTML = h;\n  document.getElementById('tip').style.display = 'block';\n}\n\ndocument.getElementById('body').addEventListener('click', function(e) {\n  var c = e.target.closest('[data-node]');\n  if (c) showTip(c.getAttribute('data-node'));\n});\n\nasync function refresh() {\n  document.getElementById('ts').textContent = 'Refreshing...';\n  try {\n    var R = await Promise.all([\n      pq('avg by(node)(DCGM_FI_DEV_GPU_UTIL{cluster=~\"' + CLUSTER + '\"})'),           // 0 util\n      pq('sum by(node)(DCGM_FI_DEV_POWER_USAGE{cluster=~\"' + CLUSTER + '\"})'),        // 1 pow\n      pq('count by(node)(DCGM_FI_DEV_GPU_UTIL{cluster=~\"' + CLUSTER + '\"})'),         // 2 gpuCnt\n      pq('sum(DCGM_EXP_XID_ERRORS_COUNT{cluster=~\"' + CLUSTER + '\"} > 0)'),              // 3 xid\n      pq('sum by(project)(runai_allocated_gpu_count_per_project{job=\"runai\"})'),       // 4 runai\n      pq('topk(10, avg by(node)(DCGM_FI_DEV_GPU_UTIL{cluster=~\"' + CLUSTER + '\"}))'), // 5 top10\n      pq('avg by(node)(DCGM_FI_DEV_GPU_TEMP{cluster=~\"' + CLUSTER + '\"})'),           // 6 temp\n      pq('max by(node,DCGM_FI_DRIVER_VERSION,modelName)(DCGM_FI_DEV_GPU_UTIL{cluster=~\"' + CLUSTER + '\"})'), // 7 driver\n      pq('sum by(node)(DCGM_FI_DEV_FB_USED{cluster=~\"' + CLUSTER + '\"})'),            // 8 memUsed\n      pq('sum by(node)(DCGM_FI_DEV_FB_FREE{cluster=~\"' + CLUSTER + '\"})'),            // 9 memFree\n      pq('group by(node,nodename,release)(node_uname_info)'), // 10 uname - no cluster filter: BCM/mgmt nodes may lack label\n      pq('group by(node,pretty_name)(node_os_info)'),        // 11 os\n    ]);\n\n    var utilR=R[0], powR=R[1], cntR=R[2], xidR=R[3], wlR=R[4], topR=R[5];\n    var tempR=R[6], drvR=R[7], muR=R[8], mfR=R[9], unR=R[10], osR=R[11];\n\n    // Node detail maps\n    var unameMap = {}, osMap = {};\n    unR.forEach(function(r) { unameMap[r.metric.node] = {hostname: r.metric.nodename || '', kernel: r.metric.release || ''}; });\n    osR.forEach(function(r) { osMap[r.metric.node] = r.metric.pretty_name || ''; });\n\n    // GPU node map\n    var gm = {};\n    utilR.forEach(function(r) { gm[r.metric.node] = {util: parseFloat(r.value[1]) || 0, pow: 0, gpus: 0, temp: 0, memUsed: 0, memFree: 0, driver: '', model: ''}; });\n    powR.forEach(function(r)  { if (gm[r.metric.node]) gm[r.metric.node].pow = parseFloat(r.value[1]) || 0; });\n    cntR.forEach(function(r)  { if (gm[r.metric.node]) gm[r.metric.node].gpus = parseInt(r.value[1]) || 0; });\n    tempR.forEach(function(r) { if (gm[r.metric.node]) gm[r.metric.node].temp = (parseFloat(r.value[1]) || 0).toFixed(0); });\n    drvR.forEach(function(r)  { if (gm[r.metric.node]) { gm[r.metric.node].driver = r.metric.DCGM_FI_DRIVER_VERSION || ''; gm[r.metric.node].model = r.metric.modelName || ''; } });\n    muR.forEach(function(r)   { if (gm[r.metric.node]) gm[r.metric.node].memUsed = (parseFloat(r.value[1]) || 0).toFixed(0); });\n    mfR.forEach(function(r)   { if (gm[r.metric.node]) gm[r.metric.node].memFree = (parseFloat(r.value[1]) || 0).toFixed(0); });\n\n    // Store for tooltip\n    Object.keys(gm).forEach(function(n) {\n      nodeDetails[n] = Object.assign({}, gm[n], {\n        hostname: unameMap[n] ? unameMap[n].hostname : '',\n        kernel:   unameMap[n] ? unameMap[n].kernel : '',\n        os:       osMap[n] || ''\n      });\n    });\n\n    var nodes = Object.keys(gm);\n    var nNodes = nodes.length;\n    var nGpus = Object.values(gm).reduce(function(a, x) { return a + x.gpus; }, 0) || nNodes * 8;\n    var avgU = nNodes > 0 ? Object.values(gm).reduce(function(a, x) { return a + x.util; }, 0) / nNodes : 0;\n    var avgT = nNodes > 0 ? Object.values(gm).reduce(function(a, x) { return a + parseFloat(x.temp || 0); }, 0) / nNodes : 0;\n    var totKw = Object.values(gm).reduce(function(a, x) { return a + x.pow; }, 0) / 1000;\n    var xids = parseInt(((xidR[0] || {value: [0, '0']}).value[1])) || 0;\n    var wlCount = wlR.filter(function(r) { return parseFloat(r.value[1]) > 0; }).length;\n\n    // KPIs\n    document.getElementById('k-nodes').textContent = nNodes;\n    document.getElementById('k-gpus').textContent = nGpus.toLocaleString();\n    var ue = document.getElementById('k-util'); ue.textContent = fmtP(avgU); ue.style.color = uColor(avgU);\n    document.getElementById('k-pow').textContent = totKw.toFixed(1);\n    var te = document.getElementById('k-temp'); te.textContent = avgT.toFixed(0) + 'C'; te.style.color = avgT > 80 ? '#ff4444' : '#ff8844';\n    var xe = document.getElementById('k-err'); xe.textContent = xids || '0'; xe.style.color = xids > 0 ? '#ff2244' : '#44ff88';\n    document.getElementById('k-wl').textContent = wlCount;\n\n    // GPU nodes\n    var rg = document.getElementById('rack-grid');\n    var ng = document.getElementById('node-grid');\n    var gl = document.getElementById('gpu-lbl');\n    rg.innerHTML = ''; ng.innerHTML = '';\n\n    if (nNodes > 50) {\n      gl.textContent = 'GPU Nodes - Rack View (' + nNodes + ' nodes)';\n      ng.style.display = 'none'; rg.style.display = 'flex';\n      var racks = {};\n      nodes.forEach(function(n) {\n        var ri = rackOf(n); if (ri === null) ri = 0;\n        if (!racks[ri]) racks[ri] = {nodes: [], utils: [], pows: []};\n        racks[ri].nodes.push(n);\n        racks[ri].utils.push(gm[n].util);\n        racks[ri].pows.push(gm[n].pow);\n      });\n      Object.keys(racks).sort(function(a, b) { return a - b; }).forEach(function(ri) {\n        var r = racks[ri];\n        var au = r.utils.reduce(function(a, b) { return a + b; }, 0) / r.utils.length;\n        var tp = r.pows.reduce(function(a, b) { return a + b; }, 0) / 1000;\n        var col = uColor(au);\n        var el = document.createElement('div');\n        el.className = 'rack';\n        el.style.cssText = 'background:' + uBg(au) + ';border-color:' + col + ';box-shadow:0 0 8px ' + uBg(au) + ';';\n        el.innerHTML = '<div class=\"rn\">Rack ' + String(ri).padStart(2, '0') + '</div>' +\n          '<div class=\"ru\" style=\"color:' + col + '\">' + fmtP(au) + '</div>' +\n          '<div class=\"rm\">' + r.nodes.length + ' nodes / ' + tp.toFixed(1) + 'kW</div>';\n        el.onclick = (function(_nodes) { return function() { showRackDrill(_nodes); }; })(r.nodes);\n        rg.appendChild(el);\n      });\n    } else {\n      gl.textContent = 'GPU Nodes (' + nNodes + ')';\n      ng.style.display = 'flex'; rg.style.display = 'none';\n      nodes.sort().forEach(function(n) {\n        var x = gm[n];\n        var col = uColor(x.util);\n        var cls = x.util >= 90 ? 'nc crit' : 'nc';\n        var card = '<div class=\"' + cls + '\" style=\"background:' + uBg(x.util) + ';border-color:' + col + '\" data-node=\"' + esc(n) + '\">' +\n          '<div class=\"nct\"><span class=\"dot\" style=\"background:' + col + '\"></span><span style=\"color:#ddeeff\">' + esc(n) + '</span></div>' +\n          '<div class=\"ncr\"><span>Util</span><span style=\"color:' + col + ';font-weight:700\">' + fmtP(x.util) + '</span></div>' +\n          '<div class=\"ncr\"><span>Temp</span><span style=\"color:' + (parseFloat(x.temp) > 80 ? '#ff4444' : '#ccc') + '\">' + (x.temp ? x.temp + 'C' : '-') + '</span></div>' +\n          '<div class=\"ncr\"><span>Power</span><span style=\"color:#ffcc44\">' + fmtW(x.pow) + '</span></div>' +\n          '<div class=\"ncr\"><span>GPUs</span><span style=\"color:#88aaff\">' + (x.gpus || 8) + '</span></div>' +\n          '</div>';\n        ng.innerHTML += card;\n      });\n    }\n\n    // CPU / management nodes\n    var gpuSet = new Set(nodes);\n    var cpuGrid = document.getElementById('cpu-grid');\n    cpuGrid.innerHTML = '';\n    var cpuFound = 0;\n    // All nodes from node_uname_info that are NOT in GPU set\n    unR.forEach(function(r) {\n      var n = r.metric.node;\n      if (!n || gpuSet.has(n)) return;\n      cpuFound++;\n      var label = n === '10.63.83.209' ? 'ObsVM' : (r.metric.nodename && r.metric.nodename !== n ? r.metric.nodename : n);\n      var role  = n === '10.63.83.209' ? 'ObsVM / Management' : 'CPU / BCM';\n      nodeDetails[n] = {\n        hostname: r.metric.nodename || n,\n        kernel:   r.metric.release || '',\n        os:       osMap[n] || '',\n        driver: '', model: '', gpus: 0, util: 0, temp: 0, memUsed: 0, memFree: 0, pow: 0\n      };\n      cpuGrid.innerHTML += '<div class=\"nc\" style=\"background:rgba(0,40,80,.4);border-color:#0088cc\" data-node=\"' + esc(n) + '\">' +\n        '<div class=\"nct\"><span class=\"dot\" style=\"background:#00d4ff\"></span><span style=\"color:#cceeff\">' + esc(label) + '</span></div>' +\n        '<div class=\"ncr\"><span>Role</span><span style=\"color:#00d4ff\">' + esc(role) + '</span></div>' +\n        '<div class=\"ncr\"><span>OS</span><span style=\"color:#88aaff;max-width:95px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">' + esc(osMap[n] || '-') + '</span></div>' +\n        '<div class=\"ncr\"><span>Exporter</span><span style=\"color:#44ff88\">up</span></div>' +\n        '</div>';\n    });\n    document.getElementById('s-cpu').style.display = cpuFound > 0 ? 'block' : 'none';\n\n    // Hot list\n    var hl = document.getElementById('hot-list');\n    hl.innerHTML = '';\n    topR.sort(function(a, b) { return parseFloat(b.value[1]) - parseFloat(a.value[1]); }).forEach(function(r, i) {\n      var u = parseFloat(r.value[1]) || 0;\n      var c = uColor(u);\n      hl.innerHTML += '<div class=\"hn\"><span style=\"color:#554;min-width:16px\">' + (i+1) + '.</span>' +\n        '<span style=\"color:#ccc\">' + esc(r.metric.node) + '</span>' +\n        '<span style=\"color:' + c + ';font-weight:800\">' + fmtP(u) + '</span></div>';\n    });\n    if (!topR.length) hl.innerHTML = '<span style=\"color:#334;font-size:.7em\">No GPU data for: ' + esc(CLUSTER) + '</span>';\n\n    // RunAI\n    var rr = document.getElementById('runai-row');\n    rr.innerHTML = '';\n    var wlColors = ['#aa88ff','#88aaff','#ff88aa','#88ffcc','#ffbb44','#ff6688','#44ccff'];\n    var wlFiltered = wlR.filter(function(r) { return parseFloat(r.value[1]) > 0; });\n    if (!wlFiltered.length) {\n      rr.innerHTML = '<span style=\"color:#334;font-size:.7em\">No active workloads</span>';\n    } else {\n      wlFiltered.sort(function(a, b) { return parseFloat(b.value[1]) - parseFloat(a.value[1]); }).forEach(function(r, i) {\n        var proj = r.metric.project || 'default';\n        var col = wlColors[i % wlColors.length];\n        rr.innerHTML += '<div class=\"rp\"><span style=\"color:' + col + ';font-weight:700\">' + esc(proj) + '</span>' +\n          '<span style=\"color:#5566cc;margin-left:4px\">' + parseFloat(r.value[1]).toFixed(0) + ' GPU</span></div>';\n      });\n    }\n\n    document.getElementById('ts').textContent = 'Updated ' + new Date().toLocaleTimeString();\n  } catch(e) {\n    document.getElementById('ts').textContent = 'Error: ' + e.message;\n  }\n  setTimeout(refresh, 30000);\n}\n\nfunction showRackDrill(nodes) {\n  var h = '';\n  nodes.forEach(function(n) {\n    var nd = nodeDetails[n] || {};\n    h += '<div class=\"tr\"><span class=\"tk\">' + esc(n) + '</span><span class=\"tv\" style=\"color:' + uColor(nd.util||0) + '\">' + fmtP(nd.util||0) + '</span></div>';\n  });\n  document.getElementById('tip-title').childNodes[0].textContent = 'Rack ';\n  document.getElementById('tip-body').innerHTML = h;\n  document.getElementById('tip').style.display = 'block';\n}\n\nrefresh();\n</script>\n</div>",
+        "mode": "html"
+      },
+      "title": "NVIS Live Topology",
+      "type": "text"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 2,
+      "title": "🔴 Node Health",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "red",
+                  "text": "🔴 ERROR"
+                },
+                "1": {
+                  "color": "green",
+                  "text": "🟢 HEALTHY"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 11
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "nvis_node_health{cluster=~\"$cluster\"} or label_replace(up{job=\"node-exporter\",cluster=~\"$cluster\"},\"node\",\"$1\",\"instance\",\"(.*)\")",
+          "legendFormat": "{{instance}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Node Health — All Nodes",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "text": "✅ None"
+                },
+                "94": {
+                  "color": "red",
+                  "text": "🚨 XID 94"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 11
+      },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(DCGM_EXP_XID_ERRORS_COUNT{cluster=~\"$cluster\"})",
+          "legendFormat": "XID Errors",
+          "refId": "A"
+        }
+      ],
+      "title": "XID Errors — Cluster",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Kernel receive queue backlog across all nodes",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 1000000
+              },
+              {
+                "color": "orange",
+                "value": 10000000
+              },
+              {
+                "color": "red",
+                "value": 100000000
+              }
+            ]
+          },
+          "unit": "bytes"
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 11
+      },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "expr": "sum(node_softnet_backlog_len{cluster=~\"$cluster\"})",
+          "legendFormat": "Queue Depth",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Backlog (Cluster)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Rate of NIC receive drops — proxy for PFC pause events without mlx5/ethtool stats",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 100
+              },
+              {
+                "color": "orange",
+                "value": 500
+              },
+              {
+                "color": "red",
+                "value": 2000
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 11
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_network_receive_drop_total{cluster=~\"$cluster\",device!~\"lo|veth.*|docker.*\"}[2m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Packet Drops/s (PFC proxy)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "description": "Rate of softirq queue drops — proxy for congestion without switch ECN counters",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "orange",
+                "value": 200
+              },
+              {
+                "color": "red",
+                "value": 1000
+              }
+            ]
+          }
+        }
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 11
+      },
+      "id": 7,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(node_softnet_dropped_total{cluster=~\"$cluster\"}[2m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Softnet Drops/s (ECN proxy)",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 15
+      },
+      "id": 8,
+      "title": "Real NIC Traffic — All Nodes",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "opacity",
+            "lineWidth": 2
+          },
+          "unit": "Bps"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 9,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_bytes_total{node=~\"$node\",device=~\"bond0\"}[1m])",
+          "legendFormat": "{{instance}} RX",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_network_transmit_bytes_total{node=~\"$node\",device=~\"bond0\"}[1m])",
+          "legendFormat": "{{instance}} TX",
+          "refId": "B"
+        }
+      ],
+      "title": "Real NIC Traffic — All Nodes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "lineWidth": 2
+          },
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 10,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "last"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "DCGM_FI_DEV_GPU_UTIL{cluster=~\"$cluster\"}",
+          "legendFormat": "{{instance}} GPU{{gpu}}",
+          "refId": "A"
+        }
+      ],
+      "title": "GPU Utilization — drops when node fails",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 11,
+      "title": "⏱️ Fault Timeline",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineWidth": 2
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 16,
+        "x": 0,
+        "y": 25
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(nvis_traffic_bytes_total{src=~\"$node\",dst=~\".*\"}[1m]) or vector(0)",
+          "legendFormat": "node001→node002 traffic",
+          "refId": "A"
+        },
+        {
+          "expr": "nvis_node_health{node=~\"$node\"} or vector(1)",
+          "legendFormat": "node002 health (1=OK 0=ERR)",
+          "refId": "B"
+        },
+        {
+          "expr": "nvis_queue_depth{node=~\"$node\",dst=~\".*\"} or vector(0)",
+          "legendFormat": "Queue backlog",
+          "refId": "C"
+        },
+        {
+          "expr": "sum(DCGM_EXP_XID_ERRORS_COUNT{cluster=~\"$cluster\",node=~\"$node\"})",
+          "legendFormat": "XID error code",
+          "refId": "D"
+        }
+      ],
+      "title": "Full Fault Timeline — Traffic + Health + Queue + XID",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "lineWidth": 2
+          }
+        }
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 25
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(node_network_receive_drop_total{cluster=~\"$cluster\",node=~\"$node\",device!~\"lo|veth.*|docker.*\"}[2m])",
+          "legendFormat": "{{instance}} drops/s (PFC proxy)",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(node_softnet_dropped_total{cluster=~\"$cluster\",node=~\"$node\"}[2m])",
+          "legendFormat": "{{instance}} softnet drops/s (ECN proxy)",
+          "refId": "B"
+        }
+      ],
+      "title": "PFC + ECN Congestion",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 33
+      },
+      "id": 14,
+      "title": "📜 Correlated Fault Logs",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki_datasource}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 34
+      },
+      "id": 15,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{cluster=~\"$cluster\",job=\"syslog\"} |~ \"(?i)(xid|nvrm|nvidia|nvlink|gpu|dcgm|cuda|ecc|uncorrect|sxid|dbe|sbe|nvml)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "🔴 XID / GPU Error Events",
+      "type": "logs"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "${loki_datasource}"
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 34
+      },
+      "id": 16,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{cluster=~\"$cluster\",job=\"syslog\"} |~ \"(?i)(slurm|munge|srun|sbatch|scancel|squeue|salloc|node.*down|error|fail|kill)\"",
+          "refId": "A"
+        }
+      ],
+      "title": "📋 Slurm / Job Events",
+      "type": "logs"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "tags": [
+    "topology",
+    "faults",
+    "xid",
+    "nvis"
+  ],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": false,
+          "text": "nvis-loki",
+          "value": "nvis-loki"
+        },
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "loki_datasource",
+        "options": [],
+        "query": "loki",
+        "refresh": 1,
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "hehehe",
+          "value": "hehehe"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(node_uname_info, cluster)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Cluster",
+        "multi": false,
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(node_uname_info, cluster)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": {},
+        "datasource": {
+          "type": "prometheus",
+          "uid": "nvis-victoriametrics"
+        },
+        "definition": "label_values(node_uname_info{cluster=~\"$cluster\"}, node)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Node",
+        "multi": true,
+        "name": "node",
+        "options": [],
+        "query": {
+          "query": "label_values(node_uname_info{cluster=~\"$cluster\"}, node)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "title": "Live Cluster Topology — Fault Visualization",
+  "uid": "nvis-live-topology",
+  "version": 19
+}

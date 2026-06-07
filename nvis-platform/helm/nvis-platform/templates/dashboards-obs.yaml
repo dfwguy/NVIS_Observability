@@ -1,0 +1,17 @@
+{{- if .Values.dashboards.observability.enabled }}
+{{- range $path, $_ := .Files.Glob "dashboards/obs/*.json" }}
+{{- $name := base $path | trimSuffix ".json" }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-dash-obs-{{ $name }}
+  labels:
+    {{- include "nvis-platform.labels" $ | nindent 4 }}
+    grafana_dashboard: "1"
+    nvis.dashboard.pack: observability
+data:
+  {{ base $path }}: |-
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}
+{{- end }}

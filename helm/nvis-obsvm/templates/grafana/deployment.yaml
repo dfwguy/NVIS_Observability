@@ -1,0 +1,180 @@
+{{- if .Values.grafana.enabled }}
+---
+# =============================================================================
+# Grafana Deployment
+# =============================================================================
+# Grafana is stateless w.r.t. session (SQLite DB lives on the PVC).
+# The PVC is RWO so only one pod can write at a time — HPA provides
+# redundancy (new pod takes over the PVC after old pod releases it).
+# For true multi-replica HA, switch Grafana to PostgreSQL backend.
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-grafana
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-grafana
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  # HPA manages replicas — do not set replicas here when HPA is enabled
+  {{- if not .Values.grafana.hpa.enabled }}
+  replicas: 1
+  {{- end }}
+  selector:
+    matchLabels:
+      app: nvis-grafana
+  strategy:
+    type: Recreate   # RWO PVC cannot be shared; Recreate avoids mount conflicts
+  template:
+    metadata:
+      labels:
+        app: nvis-grafana
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+      annotations:
+        checksum/datasources: {{ include (print $.Template.BasePath "/grafana/configmap.yaml") . | sha256sum }}
+    spec:
+      # -----------------------------------------------------------------------
+      # Security — grafana user (UID 472)
+      # -----------------------------------------------------------------------
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-grafana
+      # -----------------------------------------------------------------------
+      # Init: wait for Prometheus to be ready before starting Grafana
+      # -----------------------------------------------------------------------
+      initContainers:
+        - name: wait-for-prometheus
+          image: {{ include "nvis.image" (dict "root" . "repo" "busybox" "tag" "1.36") }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Prometheus..."
+              until wget -qO- http://nvis-obsvm-prometheus.{{ .Values.namespace }}.svc:{{ .Values.prometheus.port }}/-/ready 2>/dev/null; do
+                echo "  Prometheus not ready, retrying in 5s..."
+                sleep 5
+              done
+              echo "Prometheus ready — starting Grafana."
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      # -----------------------------------------------------------------------
+      # Main container
+      # -----------------------------------------------------------------------
+      containers:
+        - name: grafana
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.grafana.image.repository "tag" .Values.grafana.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: {{ .Values.grafana.port }}
+              protocol: TCP
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: nvis-grafana-secret
+                  key: admin-password
+            - name: GF_SERVER_HTTP_PORT
+              value: "{{ .Values.grafana.port }}"
+            - name: GF_SERVER_ENABLE_GZIP
+              value: "true"
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "false"
+            - name: GF_PANELS_DISABLE_SANITIZE_HTML
+              value: {{ .Values.grafana.disableSanitizeHtml | quote }}
+            - name: GF_SECURITY_ALLOW_EMBEDDING
+              value: {{ .Values.grafana.allowEmbedding | quote }}
+            # Allow the Grafana session cookie to be sent inside a cross-origin
+            # iframe (NVIS Rack Status unified dashboard). Without this the
+            # embedded panels show the Grafana login even when the user is
+            # already logged in at the same origin.
+            - name: GF_SECURITY_COOKIE_SAMESITE
+              value: "disabled"
+            # Disable content security policy for iframe embedding in demo environments
+            - name: GF_SECURITY_CONTENT_SECURITY_POLICY
+              value: "false"
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: "/var/lib/grafana/dashboards/nvis-demo-home.json"
+            {{- if .Values.grafana.rootUrl }}
+            - name: GF_SERVER_ROOT_URL
+              value: {{ .Values.grafana.rootUrl | quote }}
+            {{- end }}
+            {{- if .Values.grafana.domain }}
+            - name: GF_SERVER_DOMAIN
+              value: {{ .Values.grafana.domain | quote }}
+            {{- end }}
+            - name: GF_SNAPSHOTS_EXTERNAL_ENABLED
+              value: "false"
+            {{- if .Values.grafana.extraEnv }}
+            {{- toYaml .Values.grafana.extraEnv | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+              readOnly: true
+            - name: dashboard-provisioning
+              mountPath: /etc/grafana/provisioning/dashboards
+              readOnly: true
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
+              readOnly: true
+          resources:
+            {{- toYaml .Values.grafana.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 472
+            runAsGroup: 472
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # Grafana writes plugins and sessions
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.grafana.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.grafana.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: datasources
+          configMap:
+            name: nvis-grafana-datasources
+        - name: dashboard-provisioning
+          configMap:
+            name: nvis-grafana-dashboard-provisioning
+        - name: dashboards
+          configMap:
+            name: nvis-grafana-dashboards
+            optional: true   # graceful start even if configmap not yet created
+        - name: data
+          persistentVolumeClaim:
+            claimName: nvis-grafana-data
+{{- end }}

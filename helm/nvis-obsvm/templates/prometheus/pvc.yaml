@@ -1,0 +1,15 @@
+{{- if .Values.prometheus.enabled }}
+---
+# =============================================================================
+# Prometheus PersistentVolumeClaim
+# =============================================================================
+# Note: Prometheus uses a StatefulSet with volumeClaimTemplates, so the PVC
+# is created automatically as data-nvis-prometheus-0.
+# This standalone PVC is intentionally absent — see deployment.yaml for
+# the volumeClaimTemplates block.
+#
+# If you need a pre-provisioned PV (e.g., NFS), create a PV manually and
+# set storageClass + a matching label selector in values.yaml.
+# =============================================================================
+# (Intentionally empty — PVC lifecycle managed by StatefulSet volumeClaimTemplates)
+{{- end }}

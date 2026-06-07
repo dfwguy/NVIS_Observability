@@ -1,0 +1,27 @@
+[Unit]
+Description=NVIS CMDaemon Prometheus Exporter
+Documentation=https://gitlab-master.nvidia.com/hlakshminara/nvis-observability
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/nvis-monitoring
+
+# Populated by nvis-setup.sh at deploy time
+EnvironmentFile=/etc/nvis/cmdaemon-exporter.env
+
+ExecStart=/usr/bin/python3 /opt/nvis-monitoring/cmdaemon_exporter.py
+
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cmdaemon-exporter
+
+# Give SSH connections time to finish on stop
+TimeoutStopSec=15
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,2 @@
+# ipmi-sol exporter uses only the Python standard library.
+# Runtime dependency: `ipmitool` (installed via apt in the Dockerfile).

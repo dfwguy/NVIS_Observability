@@ -1,0 +1,110 @@
+{{- if and .Values.victoriametrics.enabled (eq (include "nvis.storage" .) "victoria") }}
+---
+# =============================================================================
+# VictoriaMetrics StatefulSet — Long-term metrics storage (12 months)
+# =============================================================================
+# VictoriaMetrics receives remote_write from Prometheus and is queried by
+# Grafana for historical dashboards. It is single-node (not cluster mode)
+# which is appropriate for a single-site 4000-node demo cluster.
+# =============================================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nvis-victoriametrics
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nvis-victoriametrics
+    {{- include "nvis-obsvm.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nvis-victoriametrics
+  serviceName: nvis-victoriametrics-headless
+  podManagementPolicy: OrderedReady
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nvis-victoriametrics
+        {{- include "nvis-obsvm.labels" . | nindent 8 }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534    # nobody
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      serviceAccountName: nvis-victoriametrics
+      initContainers:
+        - name: fix-permissions
+          image: {{ include "nvis.image" (dict "root" . "repo" "busybox" "tag" "1.36") }}
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "chown -R 65534:65534 /vm-data || true"]
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: data
+              mountPath: /vm-data
+      containers:
+        - name: victoriametrics
+          image: {{ include "nvis.image" (dict "root" . "repo" .Values.victoriametrics.image.repository "tag" .Values.victoriametrics.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          args:
+            - -storageDataPath=/vm-data
+            - -retentionPeriod={{ .Values.victoriametrics.retention }}
+            - -httpListenAddr=:{{ .Values.victoriametrics.port }}
+            - -search.maxQueryDuration=120s
+            - -search.maxConcurrentRequests=16
+            - -search.maxUniqueTimeseries=5000000
+          ports:
+            - name: http
+              containerPort: {{ .Values.victoriametrics.port }}
+              protocol: TCP
+          volumeMounts:
+            - name: data
+              mountPath: /vm-data
+          resources:
+            {{- toYaml .Values.victoriametrics.resources | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.victoriametrics.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.victoriametrics.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        labels:
+          app: nvis-victoriametrics
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.victoriametrics.persistence.storageClass }}
+        storageClassName: {{ .Values.victoriametrics.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.victoriametrics.persistence.size }}
+{{- end }}

@@ -1,0 +1,15 @@
+---
+# =============================================================================
+# Namespace — nvis-monitoring
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: nvis-observability
+    # hostPort required for Prometheus/Loki to bind 0.0.0.0:9090/3100 on the host
+    # (equivalent to docker -p 9090:9090) so GPU nodes on other subnets can reach them.
+    pod-security.kubernetes.io/enforce: privileged

@@ -1,0 +1,12 @@
+{{- /*
+=============================================================================
+DEPRECATED — replaced by templates/prometheus/ subdirectory.
+This file is kept as a placeholder to avoid git conflicts.
+All resources are now defined in:
+  templates/prometheus/configmap.yaml
+  templates/prometheus/deployment.yaml
+  templates/prometheus/service.yaml
+  templates/prometheus/hpa.yaml
+  templates/prometheus/pvc.yaml
+=============================================================================
+*/ -}}

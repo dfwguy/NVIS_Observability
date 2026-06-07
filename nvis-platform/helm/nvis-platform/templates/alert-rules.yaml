@@ -1,0 +1,114 @@
+{{- if and .Values.grafana.enabled .Values.alerts.enabled }}
+---
+# =============================================================================
+# Grafana provisioned alert rules
+# =============================================================================
+# `cluster` and `dgx_flavor` external labels are set on Prometheus already, so
+# every alert carries the right cluster context.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-alert-rules
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  alert-rules.yaml: |
+    apiVersion: 1
+    groups:
+      - orgId: 1
+        name: nvis-platform
+        folder: NVIS Platform
+        interval: 1m
+        rules:
+          {{- if .Values.integrations.redfishFast.enabled }}
+          - uid: nvis-bmc-unreachable
+            title: BMC unreachable > 5 minutes
+            condition: A
+            data:
+              - refId: A
+                queryType: ""
+                datasourceUid: nvis-prometheus
+                model:
+                  expr: avg_over_time(redfish_fast_up{cluster=~".+"}[5m]) < 0.5
+                  intervalMs: 60000
+                  refId: A
+            noDataState: OK
+            execErrState: Error
+            for: 5m
+            labels:
+              severity: critical
+              alert_class: bmc_down
+            annotations:
+              summary: "BMC unreachable on cluster {{`{{ $labels.cluster }}`}}"
+              description: "BMC {{`{{ $labels.bmc }}`}} on cluster {{`{{ $labels.cluster }}`}} has been unreachable for over 5 minutes."
+          {{- end }}
+
+          {{- if .Values.integrations.redfish.enabled }}
+          - uid: nvis-gpu-temp-high
+            title: GPU temperature > 80C
+            condition: A
+            data:
+              - refId: A
+                queryType: ""
+                datasourceUid: nvis-prometheus
+                model:
+                  expr: max by (node, gpu, cluster) (redfish_thermal_temperature_celsius{sensor=~".*GPU.*"}) > 80
+                  intervalMs: 60000
+                  refId: A
+            noDataState: NoData
+            execErrState: Error
+            for: 5m
+            labels:
+              severity: warning
+              alert_class: gpu_thermal
+            annotations:
+              summary: "GPU temperature high on cluster {{`{{ $labels.cluster }}`}}"
+              description: "GPU {{`{{ $labels.gpu }}`}} on node {{`{{ $labels.node }}`}} has been above 80C for 5 minutes."
+          {{- end }}
+
+          - uid: nvis-node-down
+            title: Node down > 5 minutes
+            condition: A
+            data:
+              - refId: A
+                queryType: ""
+                datasourceUid: nvis-prometheus
+                model:
+                  expr: max by (instance, cluster, dgx_flavor) (up{job="node-exporter"}) == 0
+                  intervalMs: 60000
+                  refId: A
+            noDataState: NoData
+            execErrState: Error
+            for: 5m
+            labels:
+              severity: critical
+              alert_class: node_down
+            annotations:
+              summary: "Node down on cluster {{`{{ $labels.cluster }}`}}"
+              description: "Node {{`{{ $labels.instance }}`}} on cluster {{`{{ $labels.cluster }}`}} ({{`{{ $labels.dgx_flavor }}`}}) has not reported for 5 minutes."
+
+          {{- if or .Values.integrations.ipmiSel.enabled .Values.integrations.ipmiSol.enabled }}
+          - uid: nvis-loki-ingestion-stalled
+            title: Loki ingestion stalled
+            condition: A
+            data:
+              - refId: A
+                queryType: ""
+                datasourceUid: nvis-prometheus
+                model:
+                  expr: rate(loki_distributor_lines_received_total[5m]) == 0
+                  intervalMs: 60000
+                  refId: A
+            noDataState: NoData
+            execErrState: Error
+            for: 10m
+            labels:
+              severity: warning
+              alert_class: loki_stalled
+            annotations:
+              summary: "Loki ingestion stalled on cluster {{`{{ $labels.cluster }}`}}"
+              description: "Loki has not received any new log lines for 10 minutes — IPMI SEL/SOL pipelines may be broken."
+          {{- end }}
+{{- end }}

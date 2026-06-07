@@ -1,0 +1,94 @@
+{{- if .Values.integrations.ufm.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-ufm-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-ufm-exporter
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nvis-ufm-exporter
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-ufm-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: ufm-exporter
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/ufm-exporter:{{ include "nvis-platform.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.cluster.name | quote }}
+            - name: UFM_HOST
+              value: {{ .Values.integrations.ufm.host | quote }}
+            - name: UFM_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrations.ufm.credentialsSecret }}
+                  key: user
+            - name: UFM_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.integrations.ufm.credentialsSecret }}
+                  key: pass
+            - name: SCRAPE_INTERVAL
+              value: {{ .Values.integrations.ufm.scrapeInterval | quote }}
+            - name: PORT
+              value: {{ .Values.integrations.ufm.port | quote }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.integrations.ufm.port }}
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-ufm-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-ufm-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-ufm-exporter
+  ports:
+    - name: metrics
+      port: {{ .Values.integrations.ufm.port }}
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

@@ -1,0 +1,72 @@
+{{- if and .Values.grafana.enabled .Values.alerts.enabled }}
+---
+# =============================================================================
+# Grafana provisioned contact points
+# =============================================================================
+# Email contact uses SMTP configured in grafana.ini (rendered by grafana.yaml).
+# Teams / Slack webhooks are read from Secrets via env vars (TEAMS_WEBHOOK_URL
+# and SLACK_WEBHOOK_URL — see grafana.yaml env block).
+#
+# IMPORTANT (recurring memory): Grafana email contact-point HTML-escapes the
+# message body. Keep the email message plain text only — no <div>, <table>,
+# <img>, no inline CSS.
+# =============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nvis-grafana-contact-points
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-grafana
+data:
+  contact-points.yaml: |
+    apiVersion: 1
+    contactPoints:
+      {{- if .Values.alerts.email.enabled }}
+      - orgId: 1
+        name: email
+        receivers:
+          - uid: nvis-email
+            type: email
+            settings:
+              addresses: {{ .Values.alerts.email.recipients | quote }}
+              singleEmail: false
+              message: |
+                Alert: {{`{{ .CommonLabels.alertname }}`}}
+                Cluster: {{`{{ .CommonLabels.cluster }}`}}
+                Severity: {{`{{ .CommonLabels.severity }}`}}
+                Status: {{`{{ .Status }}`}}
+                Summary: {{`{{ .CommonAnnotations.summary }}`}}
+                Description: {{`{{ .CommonAnnotations.description }}`}}
+                Dashboard: {{`{{ .CommonAnnotations.dashboard_url }}`}}
+      {{- end }}
+      {{- if .Values.alerts.teams.enabled }}
+      - orgId: 1
+        name: teams
+        receivers:
+          - uid: nvis-teams
+            type: teams
+            settings:
+              url: ${TEAMS_WEBHOOK_URL}
+              title: "NVIS Platform — {{`{{ .CommonLabels.alertname }}`}}"
+              sectiontitle: "Cluster: {{`{{ .CommonLabels.cluster }}`}}"
+              message: |
+                {{`{{ .CommonAnnotations.summary }}`}}
+                {{`{{ .CommonAnnotations.description }}`}}
+      {{- end }}
+      {{- if .Values.alerts.slack.enabled }}
+      - orgId: 1
+        name: slack
+        receivers:
+          - uid: nvis-slack
+            type: slack
+            settings:
+              url: ${SLACK_WEBHOOK_URL}
+              title: "NVIS Platform — {{`{{ .CommonLabels.alertname }}`}}"
+              text: |
+                Cluster: {{`{{ .CommonLabels.cluster }}`}}
+                Severity: {{`{{ .CommonLabels.severity }}`}}
+                {{`{{ .CommonAnnotations.summary }}`}}
+                {{`{{ .CommonAnnotations.description }}`}}
+      {{- end }}
+{{- end }}

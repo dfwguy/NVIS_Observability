@@ -1,0 +1,93 @@
+{{- if .Values.integrations.bcm.enabled }}
+---
+# =============================================================================
+# cmdaemon exporter — depends on BCM SSH credentials (same as BCM exporter)
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nvis-cmdaemon-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-cmdaemon-exporter
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nvis-cmdaemon-exporter
+  template:
+    metadata:
+      labels:
+        {{- include "nvis-platform.labels" . | nindent 8 }}
+        app: nvis-cmdaemon-exporter
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      {{- include "nvis-platform.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: cmdaemon-exporter
+          image: "{{ .Values.image.registry | default "ghcr.io/nvidia-nvis" }}/nvis-platform/cmdaemon-exporter:{{ include "nvis-platform.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CLUSTER_NAME
+              value: {{ .Values.cluster.name | quote }}
+            - name: BCM_HOST
+              value: {{ .Values.integrations.bcm.host | quote }}
+            - name: BCM_USER
+              value: {{ .Values.integrations.bcm.user | quote }}
+            - name: BCM_SSH_KEY
+              value: "/ssh/id_ed25519"
+            - name: PORT
+              value: "9101"
+          ports:
+            - name: metrics
+              containerPort: 9101
+              protocol: TCP
+          volumeMounts:
+            - name: ssh-key
+              mountPath: /ssh
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: ssh-key
+          secret:
+            secretName: {{ .Values.integrations.bcm.sshKeySecret }}
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvis-cmdaemon-exporter
+  labels:
+    {{- include "nvis-platform.labels" . | nindent 4 }}
+    app: nvis-cmdaemon-exporter
+spec:
+  type: ClusterIP
+  selector:
+    app: nvis-cmdaemon-exporter
+  ports:
+    - name: metrics
+      port: 9101
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

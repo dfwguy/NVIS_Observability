@@ -8,8 +8,8 @@ description: >
   Supports offline/airgap deployment, Thanos or VictoriaMetrics storage backend,
   HPA autoscaling, NetworkPolicies, RBAC, and non-root security contexts.
 type: application
-version: 2.2.0
-appVersion: "2.2.0"
+version: 2.3.0
+appVersion: "2.3.0"
 keywords:
   - prometheus
   - grafana

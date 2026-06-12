@@ -1,0 +1,16 @@
+[Unit]
+Description=NVIS DGX Node Ping Exporter (:9113)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Environment=CLUSTER_NAME=Beacon
+Environment=PING_EXPORTER_PORT=9113
+Environment=PING_COUNT=5
+Environment=POLL_INTERVAL=60
+ExecStart=/usr/bin/python3 /opt/nvis/dgx_ping_exporter.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

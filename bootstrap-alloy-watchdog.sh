@@ -75,7 +75,7 @@ echo ">> staged systemd unit"
 install -m 0755 "$SELF_DIR/alloy-watchdog.sh" /usr/local/sbin/alloy-watchdog.sh
 echo ">> installed /usr/local/sbin/alloy-watchdog.sh"
 
-# 5) hourly cron (root) on the head
+# 5) every-2-hour cron (root) on the head
 cat > /etc/cron.d/nvis-alloy-watchdog <<CRON
 # NVIS: re-push Grafana Alloy to any DGX that lost it (ephemeral root wipes it on reboot)
 SHELL=/bin/bash
@@ -83,10 +83,10 @@ ALLOY_STAGE=$STAGE
 CLUSTER_NAME=$CLUSTER
 LOKI_URL=http://10.184.70.241:3100/loki/api/v1/push
 DGX_NODES=dgx-b300-01 dgx-b300-02 dgx-b300-03 dgx-b300-04
-17 * * * * root /usr/local/sbin/alloy-watchdog.sh >> $STAGE/watchdog.cron.log 2>&1
+17 */2 * * * root /usr/local/sbin/alloy-watchdog.sh >> $STAGE/watchdog.cron.log 2>&1
 CRON
 chmod 0644 /etc/cron.d/nvis-alloy-watchdog
-echo ">> installed hourly cron /etc/cron.d/nvis-alloy-watchdog (runs :17 each hour)"
+echo ">> installed every-2-hour cron /etc/cron.d/nvis-alloy-watchdog (runs :17 every even hour)"
 
 # 6) run once now
 echo ">> first run:"

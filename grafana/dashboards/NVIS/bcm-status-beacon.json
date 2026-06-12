@@ -1,0 +1,132 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0,211,255,1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Live BCM (Bright Cluster Manager) node health \u2014 one tile per managed node (green=healthy, orange=degraded, red=down). Click for health-check & service details.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "home",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": [],
+      "targetBlank": false,
+      "title": "\ud83c\udfe0 Home",
+      "tooltip": "Back to NVIS Home",
+      "type": "link",
+      "url": "/d/nvis-demo-home"
+    }
+  ],
+  "liveNow": true,
+  "panels": [
+    {
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 24,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "code": {
+          "language": "html",
+          "showLineNumbers": false,
+          "showMiniMap": false
+        },
+        "content": "<div id=\"ch\" style=\"width:100%;height:100%;background:#07071a;color:#e0e0e0;font-family:'Roboto Mono',monospace;overflow:auto;\">\n<style>\n#ch *{box-sizing:border-box}\n@keyframes pulse{0%,100%{box-shadow:0 0 6px currentColor}50%{box-shadow:0 0 22px currentColor}}\n#ch-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:linear-gradient(90deg,#0a0a22,#12123a);border-bottom:2px solid;border-image:repeating-linear-gradient(90deg,#00ff88 0,#00ff88 12px,transparent 12px,transparent 22px,#7b2fff 22px,#7b2fff 34px,transparent 34px,transparent 44px) 1;flex-wrap:wrap}\n#ch-hdr .logo{font-size:.82em;font-weight:800;background:linear-gradient(135deg,#00ff88,#7b2fff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;min-width:90px;line-height:1.3}\n#ch-hdr .kpi{background:linear-gradient(135deg,#10103a,#1a1a4a);border:1px solid #2a2a6a;border-radius:7px;padding:5px 13px;text-align:center;min-width:62px}\n.kv{font-size:1.5em;font-weight:800;line-height:1.1}\n.kl{font-size:.58em;color:#7777bb;text-transform:uppercase;letter-spacing:.08em;margin-top:1px}\n.kn{font-size:.95em;color:#ffeeaa;text-transform:none;letter-spacing:0;margin-left:4px;font-weight:700}\n#ch-ts{margin-left:auto;font-size:.6em;color:#44448a;background:#0a0a1e;border:1px solid #1a1a3a;border-radius:4px;padding:3px 8px}\n#ch-body{padding:10px 14px}\n.sec-sep{height:1px;margin:12px 0 8px;background:linear-gradient(90deg,transparent,#1a1a44 20%,#1a1a44 80%,transparent)}\n.sec-lbl{font-size:.67em;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:3px 10px;border-radius:4px;display:block;margin-bottom:7px}\n#bmc-grid{display:flex;flex-wrap:wrap;gap:8px}\n.bnc{display:inline-flex;flex-direction:column;justify-content:center;align-items:center;border-radius:8px;width:100px;height:100px;cursor:pointer;transition:all .15s;border:1px solid transparent;position:relative;text-align:center}\n.bnc:hover{transform:translateY(-2px) scale(1.04);filter:brightness(1.25);z-index:5}\n.bnc.crit{animation:pulse 1.2s ease-in-out infinite}\n.bnc .bn{font-size:.72em;font-weight:800;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);padding:0 4px;word-break:break-all;line-height:1.2}\n.bnc .bs{font-size:.62em;font-weight:700;color:rgba(255,255,255,.92);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}\n.bnc .bt{font-size:.53em;color:rgba(255,255,255,.78);margin-top:2px;padding:0 3px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:96px}\n#ch-tip{display:none;position:fixed;top:64px;right:18px;width:320px;background:linear-gradient(160deg,#0d0d28,#13132e);border:1px solid #00ff88;border-radius:10px;padding:14px;z-index:200;max-height:78vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.7)}\n#ch-tip h3{font-size:.85em;margin:0 0 10px;color:#aaffcc;border-bottom:1px solid #003322;padding-bottom:6px}\n.tr{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #1a1a33;font-size:.66em}\n.tr:last-child{border-bottom:none}\n.tk{color:#7777aa}.tv{color:#ddeeff;text-align:right;word-break:break-all;max-width:200px}\n.lg{display:flex;gap:14px;align-items:center;margin-top:8px;font-size:.62em;color:#9999cc;flex-wrap:wrap}\n.lg .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:middle}\n</style>\n\n<div id=\"ch-hdr\">\n  <div class=\"logo\">BCM STATUS<br><span style=\"-webkit-text-fill-color:#5555aa;font-size:.8em\">CLUSTER MGR</span></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-daemon\" style=\"color:#44ff88\">-</div><div class=\"kl\">CMDaemon</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-total\" style=\"color:#00d4ff\">-</div><div class=\"kl\">Total Nodes</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-up\" style=\"color:#44ff88\">-</div><div class=\"kl\">BCM Up</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-down\" style=\"color:#ff4466\">-</div><div class=\"kl\">BCM Down</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-warn\" style=\"color:#ffcc44\">-</div><div class=\"kl\">Degraded</div></div>\n  <div class=\"kpi\"><div class=\"kv\" id=\"k-fails\" style=\"color:#ff8844\">-</div><div class=\"kl\">Health Fails</div></div>\n  <div id=\"ch-ts\">-</div>\n</div>\n\n<div id=\"ch-body\">\n  <div class=\"sec-sep\"></div>\n  <div class=\"sec-lbl\" id=\"bmc-lbl\" style=\"color:#44ff88;background:rgba(68,255,136,.08);border-left:3px solid #44ff88\">BCM Managed Nodes</div>\n  <div id=\"bmc-grid\"></div>\n  <div class=\"lg\">\n    <span><span class=\"sw\" style=\"background:#1ec96a;border:1px solid #44ff88\"></span>BCM Up &amp; healthy</span>\n    <span><span class=\"sw\" style=\"background:#b87a00;border:1px solid #ffcc44\"></span>Up, health checks failing</span>\n    <span><span class=\"sw\" style=\"background:#c92338;border:1px solid #ff4466\"></span>BCM Down</span>\n    <span style=\"color:#666\">|</span>\n    <span style=\"color:#7777aa\">click tile for check details \u00b7 auto-refresh 15s</span>\n  </div>\n</div>\n\n<div id=\"ch-tip\">\n  <h3 id=\"ch-tip-title\">Node <span onclick=\"document.getElementById('ch-tip').style.display='none'\" style=\"cursor:pointer;color:#555;float:right;font-weight:400\">\u2715</span></h3>\n  <div id=\"ch-tip-body\"></div>\n</div>\n\n<script>\n(function(){\n  var CLUSTER = '$cluster';\n  var DS_UID  = '${datasource}';\n  var PROM    = '/api/datasources/proxy/uid/' + DS_UID + '/api/v1/query';\n  var detail  = {};\n\n  function esc(s){return String(s==null?'':s).replace(/[<>&\"]/g,function(c){var m={'<':'&lt;','>':'&gt;','&':'&amp;','\"':'&quot;'};return m[c];})}\n  function pq(q){return fetch(PROM+'?query='+encodeURIComponent(q),{headers:{Accept:'application/json'}}).then(function(r){return r.json();}).then(function(d){return (d.data||{}).result||[];}).catch(function(){return [];});}\n  function row(k,v,col){return '<div class=\"tr\"><span class=\"tk\">'+k+'</span><span class=\"tv\" style=\"'+(col?'color:'+col:'')+'\">'+(v==null||v===''?'-':esc(v))+'</span></div>';}\n  function fmtAgo(sec){sec=parseFloat(sec);if(isNaN(sec)||sec<0)return '-';if(sec<60)return Math.round(sec)+'s ago';if(sec<3600)return Math.round(sec/60)+'m ago';if(sec<86400){var h=Math.floor(sec/3600),m=Math.round((sec%3600)/60);return h+'h '+(m?m+'m ':'')+'ago';}return Math.round(sec/86400)+'d ago';}\n\n  function showTip(node){\n    var d=detail[node]; if(!d) return;\n    var sc=d.up===1?(d.failCount>0?'#ffcc44':'#44ff88'):(d.up===0?'#ff4466':'#888');\n    var stStr=d.up===1?(d.failCount>0?'UP \u2014 DEGRADED':'UP \u2014 HEALTHY'):(d.up===0?'DOWN':'N/A');\n    var h='';\n    h+=row('Hostname', node);\n    h+=row('BCM Status', stStr, sc);\n    h+=row('Health Fails', d.failCount||0, d.failCount>0?'#ff8844':'#44ff88');\n    h+=row('Svc Stopped', d.svcDown||0, d.svcDown>0?'#ff8844':'#44ff88');\n    if(d.failChecks&&d.failChecks.length){\n      h+='<div style=\"margin-top:6px;font-size:.6em;color:#ffaa44;font-weight:700;letter-spacing:.05em\">FAILING CHECKS</div>';\n      d.failChecks.forEach(function(c){ h+=row(c,'FAIL','#ff4466'); });\n    }\n    if(d.stoppedSvcs&&d.stoppedSvcs.length){\n      h+='<div style=\"margin-top:6px;font-size:.6em;color:#ffaa44;font-weight:700;letter-spacing:.05em\">STOPPED SERVICES</div>';\n      d.stoppedSvcs.forEach(function(s){ h+=row(s,'STOPPED','#ff6644'); });\n    }\n    document.getElementById('ch-tip-title').childNodes[0].textContent=node+' ';\n    document.getElementById('ch-tip-body').innerHTML=h;\n    document.getElementById('ch-tip').style.display='block';\n  }\n\n  document.getElementById('ch-body').addEventListener('click',function(e){\n    var c=e.target.closest('[data-node]');\n    if(c) showTip(c.getAttribute('data-node'));\n  });\n\n  async function refresh(){\n    document.getElementById('ch-ts').textContent='Refreshing\u2026';\n    try{\n      var cm=CLUSTER&&CLUSTER.indexOf('All')<0?',cluster=\"'+CLUSTER+'\"':'';\n      var R=await Promise.all([\n        pq('cmdaemon_up{'+cm.slice(1)+'}'),\n        pq('max by(hostname,cluster)(bcm_node_up{'+cm.slice(1)+'}'+')'),\n        pq('sum by(hostname)(bcm_node_health_check{'+cm.slice(1)+'} == 1)'),\n        pq('count by(hostname)(bcm_node_service_status{'+cm.slice(1)+'} == 0)'),\n        pq('max by(hostname,check)(bcm_node_health_check{'+cm.slice(1)+'} == 1)'),\n        pq('max by(hostname,service)(bcm_node_service_status{'+cm.slice(1)+'} == 0)')\n      ]);\n      var daemonR=R[0],upR=R[1],failR=R[2],svcR=R[3],chkR=R[4],svcNR=R[5];\n      var daemonUp=daemonR.length>0?parseInt(daemonR[0].value[1],10):0;\n      var kd=document.getElementById('k-daemon');\n      kd.textContent=daemonUp===1?'UP':'DOWN';\n      kd.style.color=daemonUp===1?'#44ff88':'#ff2244';\n      kd.parentElement.style.animation=daemonUp===0?'pulse 1.4s ease-in-out infinite':'';\n      detail={};\n      upR.forEach(function(r){\n        var h=r.metric.hostname; if(!h)return;\n        detail[h]={up:parseInt(r.value[1],10),failCount:0,svcDown:0,failChecks:[],stoppedSvcs:[]};\n      });\n      failR.forEach(function(r){var h=r.metric.hostname;if(detail[h])detail[h].failCount=parseInt(r.value[1],10)||0;});\n      svcR.forEach(function(r){var h=r.metric.hostname;if(detail[h])detail[h].svcDown=parseInt(r.value[1],10)||0;});\n      chkR.forEach(function(r){var h=r.metric.hostname;if(detail[h]&&r.metric.check)detail[h].failChecks.push(r.metric.check);});\n      svcNR.forEach(function(r){var h=r.metric.hostname;if(detail[h]&&r.metric.service)detail[h].stoppedSvcs.push(r.metric.service);});\n      var nodes=Object.keys(detail).sort(function(a,b){return a.localeCompare(b);});\n      var total=nodes.length,ups=0,downs=0,warns=0,totalFails=0;\n      nodes.forEach(function(n){\n        var d=detail[n];\n        if(d.up===0)downs++;\n        else if(d.up===1&&d.failCount>0){warns++;ups++;}\n        else ups++;\n        totalFails+=d.failCount||0;\n      });\n      document.getElementById('k-total').textContent=total;\n      document.getElementById('k-up').textContent=ups;\n      document.getElementById('k-down').textContent=downs;\n      document.getElementById('k-down').style.color=downs>0?'#ff2244':'#44ff88';\n      document.getElementById('k-down').parentElement.style.animation=downs>0?'pulse 1.4s ease-in-out infinite':'';\n      document.getElementById('k-warn').textContent=warns;\n      document.getElementById('k-warn').style.color=warns>0?'#ffcc44':'#44ff88';\n      document.getElementById('k-fails').textContent=totalFails;\n      document.getElementById('k-fails').style.color=totalFails>0?'#ff8844':'#44ff88';\n      document.getElementById('bmc-lbl').textContent='BCM Managed Nodes ('+total+')';\n      var grid=document.getElementById('bmc-grid');\n      grid.innerHTML='';\n      nodes.forEach(function(n){\n        var d=detail[n];\n        var healthy=(d.up===1&&d.failCount===0&&d.svcDown===0);\n        var degraded=(d.up===1&&(d.failCount>0||d.svcDown>0));\n        var bg=healthy?'linear-gradient(135deg,#0c5a30,#1ec96a)':\n               degraded?'linear-gradient(135deg,#4a3500,#b87a00)':\n               d.up===0?'linear-gradient(135deg,#5a0c1a,#c92338)':\n               'linear-gradient(135deg,#333,#555)';\n        var bd=healthy?'#44ff88':degraded?'#ffcc44':d.up===0?'#ff4466':'#888';\n        var cls=(d.up===0)?'bnc crit':'bnc';\n        var stLabel=healthy?'HEALTHY':degraded?'DEGRADED':d.up===0?'DOWN':'N/A';\n        var sub=degraded?d.failCount+' fail'+(d.failCount!==1?'s':''):\n                d.up===0?'BCM DOWN':d.up===1?'All OK':'N/A';\n        var card=document.createElement('div');\n        card.className=cls;card.setAttribute('data-node',n);\n        card.style.cssText='background:'+bg+';border-color:'+bd+';box-shadow:0 0 6px rgba(0,0,0,.4);';\n        card.innerHTML='<div class=\"bn\">'+esc(n)+'</div>'+\n                       '<div class=\"bs\">'+stLabel+'</div>'+\n                       '<div class=\"bt\">'+esc(sub)+'</div>';\n        grid.appendChild(card);\n      });\n      if(total===0) grid.innerHTML='<span style=\"color:#666;font-size:.7em\">No BCM nodes found for cluster \u201c'+esc(CLUSTER)+'\u201d</span>';\n      document.getElementById('ch-ts').textContent='Updated '+new Date().toLocaleTimeString();\n    } catch(e){document.getElementById('ch-ts').textContent='Error: '+e.message;}\n    setTimeout(refresh,15000);\n  }\n  refresh();\n})();\n</script>\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "11.6.0",
+      "title": "BCM Node Health \u2014 Cluster Manager",
+      "type": "text"
+    }
+  ],
+  "preload": false,
+  "refresh": "15s",
+  "schemaVersion": 41,
+  "tags": [
+    "nvis",
+    "bcm",
+    "cluster-manager",
+    "beacon"
+  ],
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "text": "VictoriaMetrics",
+          "value": "nvis-victoriametrics"
+        },
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "datasource",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      },
+      {
+        "current": {
+          "text": "Beacon",
+          "value": "Beacon"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(bcm_node_up, cluster)",
+        "includeAll": false,
+        "label": "Cluster",
+        "name": "cluster",
+        "options": [],
+        "query": {
+          "query": "label_values(bcm_node_up, cluster)",
+          "refId": "A"
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "15s",
+      "30s",
+      "1m",
+      "5m"
+    ]
+  },
+  "timezone": "browser",
+  "title": "BCM Status \u2014 Beacon B300",
+  "uid": "bcm-status-beacon",
+  "version": 1
+}

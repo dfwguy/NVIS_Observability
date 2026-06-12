@@ -6,6 +6,37 @@ Format: [Semantic Versioning](https://semver.org/)
 
 ---
 
+## [2.3.0] — 2026-06-12
+
+### DGX Ping Exporter + 3 new dashboards + Alloy watchdog cron fix
+
+#### New Grafana dashboards (NVIS folder)
+
+- **`alloy-check-beacon`** — Alloy watchdog status per node. Shows whether the watchdog cron last fired successfully, latency of the heartbeat write, and time-since-last-seen. Datasource: Prometheus.
+- **`bcm-status-beacon`** — BCM cluster health at a glance. Aggregates BCM exporter metrics (node state, job queue depth, power envelope). Datasource: Prometheus.
+- **`nvis-dgx-os-health`** — DGX OS ping health across all cluster nodes. Visualizes `dgx_node_up`, `ping_latency_ms`, and `packet_loss_ratio` from the new DGX Ping Exporter. Datasource: Prometheus.
+
+#### New exporter: DGX Ping Exporter (`dgx_ping_exporter.py`)
+
+- Installed at `/opt/nvis/dgx_ping_exporter.py`, managed by `nvis-dgx-ping.service`.
+- Pings every cluster node every 60 seconds from the ObsVM.
+- Exposes metrics on `:9113` with labels `{node, host, cluster}`:
+  - `dgx_node_up` — 1 if the node responded to the last ping, 0 otherwise
+  - `ping_latency_ms` — round-trip latency in milliseconds
+  - `packet_loss_ratio` — fraction of packets lost (0.0–1.0)
+  - `last_seen_timestamp` — Unix epoch of the most recent successful ping
+- New Prometheus scrape job `dgx-ping` added to helm values (opt-in, safe default).
+
+#### Alloy watchdog cron fix
+
+- `bootstrap-alloy-watchdog.sh`: cron schedule changed from `17 * * * *` (every hour) to `17 */2 * * *` (every 2 hours). Re-run the script on any node where the watchdog was previously bootstrapped to apply the updated schedule.
+
+#### Helm chart
+
+- `version` and `appVersion` bumped from `2.2.0` → `2.3.0`.
+
+---
+
 ## [2.2.0] — 2026-05-15
 
 ### Phase 2: Redfish integration + 2 new dashboards
